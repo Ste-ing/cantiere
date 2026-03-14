@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1C1C1E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cantiere">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<title>Cantiere — Gestione Presenze</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:#F4F2EE;--surface:#FFFFFF;--surface2:#F0EDE8;--border:#DDD9D2;--border-light:#EAE7E1;
+  --text:#1C1C1E;--text2:#6B6760;--text3:#9D9A96;
+  --accent:#C8501A;--accent-dark:#A03D12;--accent-bg:#FDF0EB;--accent-border:#F0C4B0;
+  --green:#2E6B3E;--green-bg:#EAF3EE;--green-border:#A8D4B8;
+  --red:#A32D2D;--red-bg:#FCEBEB;--red-border:#F0C0C0;
+  --blue:#1D4E8F;--blue-bg:#E8EFF8;--blue-border:#A8C0E4;
+  --radius:10px;--radius-sm:6px;
+  --shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 12px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.12),0 1px 4px rgba(0,0,0,0.06);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5;}
+
+header{background:var(--text);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:50;}
+.header-brand{display:flex;align-items:center;gap:10px;}
+.header-logo{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.header-title{font-size:15px;font-weight:700;color:#fff;letter-spacing:0.02em;}
+.header-sub{font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px;}
+.header-actions{display:flex;gap:6px;align-items:center;}
+#salva-status{font-family:'DM Mono',monospace;font-size:11px;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:4px;border:1px solid var(--green-border);}
+
+.nav-wrapper{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;overflow-x:auto;scrollbar-width:none;}
+.nav-wrapper::-webkit-scrollbar{display:none;}
+.nav{display:flex;max-width:960px;margin:0 auto;}
+.nav button{padding:13px 16px;border:none;background:transparent;color:var(--text3);cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;border-bottom:2px solid transparent;transition:all 0.15s;white-space:nowrap;margin-bottom:-1px;}
+.nav button:hover{color:var(--text);background:var(--surface2);}
+.nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+.container{max-width:960px;margin:0 auto;padding:1.5rem;}
+.section{display:none;}.section.active{display:block;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:var(--shadow);}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem;gap:8px;}
+.card-title{font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);}
+
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;margin-bottom:1rem;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.metric{background:var(--surface);padding:1.25rem 1.5rem;}
+.metric-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;}
+.metric-value{font-size:28px;font-weight:800;line-height:1;color:var(--text);}
+.metric-value.blue{color:var(--blue);}.metric-value.green{color:var(--green);}.metric-value.red{color:var(--red);}.metric-value.orange{color:var(--accent);}
+
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+.row label{font-size:12px;font-weight:600;color:var(--text2);min-width:80px;letter-spacing:0.03em;text-transform:uppercase;}
+.row input,.row select,.filter-bar input,.filter-bar select{flex:1;min-width:140px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:'Syne',sans-serif;background:var(--surface);color:var(--text);outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+.row input:focus,.row select:focus,.filter-bar input:focus,.filter-bar select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
+
+.btn{padding:8px 16px;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;font-size:13px;font-family:'Syne',sans-serif;font-weight:600;transition:all 0.15s;letter-spacing:0.02em;white-space:nowrap;}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-primary:hover{background:var(--accent-dark);border-color:var(--accent-dark);}
+.btn-secondary{background:var(--surface);color:var(--text2);border-color:var(--border);}
+.btn-secondary:hover{background:var(--surface2);color:var(--text);}
+.btn-danger{background:transparent;color:var(--red);border-color:var(--red-border);font-size:12px;padding:4px 10px;}
+.btn-danger:hover{background:var(--red-bg);}
+.btn-ghost{background:transparent;color:var(--text3);border-color:transparent;padding:4px 8px;font-size:12px;}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);border-color:var(--border);}
+.form-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead tr{border-bottom:2px solid var(--border);}
+th{text-align:left;padding:8px 12px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;}
+td{padding:10px 12px;border-bottom:1px solid var(--border-light);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:var(--surface2);}
+
+.badge{display:inline-block;font-family:'DM Mono',monospace;font-size:11px;padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.03em;}
+.badge-in{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.badge-abs{background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
+.badge-out{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);}
+.chip{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:12px;font-family:'DM Mono',monospace;}
+
+.filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border-light);}
+.filter-bar label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;}
+
+.empty{color:var(--text3);font-size:13px;padding:2.5rem;text-align:center;font-family:'DM Mono',monospace;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(4px);background:var(--text);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;opacity:0;transition:opacity 0.2s,transform 0.2s;pointer-events:none;z-index:999;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(28,28,30,0.5);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(2px);padding:1rem;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:14px;padding:1.5rem;width:100%;max-width:420px;box-shadow:var(--shadow-md);border:1px solid var(--border);}
+.modal h2{font-size:15px;font-weight:700;margin-bottom:1.25rem;letter-spacing:0.02em;}
+.modal .form-actions{margin-top:1.25rem;}
+
+.stato-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:3px 9px;border-radius:4px;border:1px solid;font-weight:600;font-family:'DM Mono',monospace;}
+
+.report-section-title{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin:1.5rem 0 0.75rem;display:flex;align-items:center;gap:8px;}
+.report-section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-header-day{text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);font-weight:500;text-transform:uppercase;padding:4px 0 8px;letter-spacing:0.06em;}
+.cal-cell{border-radius:var(--radius-sm);padding:5px 6px;min-height:68px;border:1px solid var(--border-light);background:var(--surface);cursor:pointer;transition:box-shadow 0.15s;position:relative;}
+.cal-cell:hover{box-shadow:var(--shadow);z-index:1;}
+.cal-cell.has-data{cursor:pointer;}
+.cal-cell.has-data:hover{box-shadow:var(--shadow);z-index:1;}
+.cal-cell.selected{outline:2px solid #1D6FB8;outline-offset:-1px;z-index:2;background:#EAF2FB;}
+.cal-cell.selected .cal-day-num{color:#1D6FB8;}
+.cal-cell.present{background:var(--green-bg);border-color:var(--green-border);}
+.cal-cell.absent{background:var(--red-bg);border-color:var(--red-border);}
+.cal-cell.today{outline:2px solid var(--accent);outline-offset:1px;}
+.cal-cell.empty{background:transparent;border-color:transparent;min-height:68px;}
+.cal-cell.festivo{background:#FFF5F5;border-color:#F0C8C8;}
+.cal-cell.festivo.present{background:var(--green-bg);border-color:var(--green-border);}
+.cal-cell.festivo.absent{background:var(--red-bg);border-color:var(--red-border);}
+.cal-day-num{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:3px;}
+.cal-cell.present .cal-day-num{color:var(--green);}
+.cal-cell.absent .cal-day-num{color:var(--red);}
+.cal-cell.festivo .cal-day-num{color:var(--red);}
+.cal-cell.today .cal-day-num{font-weight:700;}
+.cal-cell-info{font-size:10px;color:var(--text2);line-height:1.4;}
+.cal-cell.present .cal-cell-info{color:var(--green);}
+.cal-cell.absent .cal-cell-info{color:var(--red);}
+.cal-festivo-label{font-size:9px;color:var(--red);font-weight:600;line-height:1.2;margin-bottom:2px;letter-spacing:0.02em;}
+.cal-riepilogo-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-top:1rem;}
+.qr-chip{display:block;width:100%;text-align:left;padding:6px 10px;margin-bottom:4px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);cursor:pointer;font-size:12px;font-family:'Syne',sans-serif;font-weight:600;color:var(--text);transition:all 0.12s;}
+.qr-chip:hover{border-color:var(--accent);color:var(--accent);}
+.qr-chip.selected{background:var(--accent);color:#fff;border-color:var(--accent);}
+.qr-chip.done{background:var(--green-bg);color:var(--green);border-color:var(--green-border);}
+.qr-chip.absent{background:var(--red-bg);color:var(--red);border-color:var(--red-border);}
+@media(max-width:700px){.qr-two-col{grid-template-columns:1fr!important;}}
+
+.stato-filters{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1rem;}
+.stato-filters .btn{font-size:12px;padding:4px 12px;}
+.stato-filters .btn.active-filter{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-border);}
+
+@media(max-width:640px){
+  .container{padding:.75rem;}.card{padding:1rem;}
+  .metric-grid{grid-template-columns:repeat(2,1fr);}.metric-value{font-size:22px;}
+  .cal-cell{min-height:44px;padding:4px;}.cal-cell-info{display:none;}
+  .nav button{padding:11px 12px;font-size:11px;}
+  header{padding:0 1rem;}.header-title{font-size:13px;}
+  th,td{padding:8px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <div class="header-logo">🏗</div>
+    <div>
+      <div class="header-title">CANTIERE</div>
+      <div class="header-sub" id="today-label"></div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span id="salva-status"></span>
+    <label class="btn btn-secondary" style="cursor:pointer" title="Importa dati da file Excel">📥 Importa<input type="file" accept=".xlsx,.xls" onchange="importaExcel(event)" style="display:none"></label>
+    <button class="btn btn-secondary" onclick="esportaExcel()">Esporta</button>
+  </div>
+</header>
+
+<div class="nav-wrapper">
+  <div class="nav">
+    <button class="active" onclick="showTab('dashboard',this)">Dashboard</button>
+    <button onclick="showTab('attivita',this)">Attività</button>
+    <button onclick="showTab('report',this)">Report</button>
+    <button onclick="showTab('anagrafiche',this)">Anagrafiche</button>
+    <button onclick="showTab('impostazioni',this)">Impostazioni</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="section active" id="tab-dashboard">
+    <div style="display:grid;grid-template-columns:1fr 220px;gap:1rem;align-items:start" class="qr-two-col">
+
+      <!-- Calendario -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1.1rem">
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn btn-secondary" style="padding:6px 12px" onclick="cambiareMese(-1)">&#8592;</button>
+            <span id="cal-mese-label" style="font-size:17px;font-weight:700;min-width:170px;text-align:center;letter-spacing:0.02em"></span>
+            <button class="btn btn-secondary" style="padding:6px 12px" onclick="cambiareMese(1)">&#8594;</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Filtro</span>
+            <select id="cal-operaio" onchange="renderCalendario()" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:var(--surface);outline:none"></select>
+          </div>
+        </div>
+        <div id="cal-debug-count" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:8px;text-align:right"></div>
+        <div id="calendario-grid"></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:1rem">
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:12px;height:12px;border-radius:3px;background:var(--green-bg);border:1px solid var(--green-border);display:inline-block"></span>Presente</span>
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:12px;height:12px;border-radius:3px;background:var(--red-bg);border:1px solid var(--red-border);display:inline-block"></span>Assente</span>
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:12px;height:12px;border-radius:3px;background:#FFF5F5;border:1px solid #F0C8C8;display:inline-block"></span>Festivo</span>
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--accent)"><span style="width:12px;height:12px;border-radius:3px;background:transparent;border:2px solid var(--accent);display:inline-block"></span>Oggi</span>
+        </div>
+        <div id="cal-legenda-operai" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:0.5rem"></div>
+        <!-- Riepilogo giorno -->
+        <div id="giorno-riepilogo" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+            <span id="giorno-riepilogo-title" style="font-size:13px;font-weight:700"></span>
+            <button class="btn btn-ghost" onclick="chiudiGiornoPanel()" style="padding:2px 8px;font-size:13px">✕</button>
+          </div>
+          <div id="giorno-riepilogo-body"></div>
+        </div>
+      </div>
+
+      <!-- Pannello rapido -->
+      <div style="display:flex;flex-direction:column;gap:0.75rem;position:sticky;top:1rem">
+        <!-- Data -->
+        <div class="card" style="padding:0.75rem 1rem">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:4px">Data</div>
+          <div id="qr-data-label" style="font-size:13px;font-weight:600;color:var(--text2)">— Clicca un giorno —</div>
+          <input type="hidden" id="qr-data">
+        </div>
+        <!-- Operai -->
+        <div class="card" style="padding:0.75rem 1rem">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Operaio</div>
+          <div id="qr-operai"></div>
+        </div>
+        <!-- Cantieri -->
+        <div class="card" style="padding:0.75rem 1rem">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Cantiere</div>
+          <div id="qr-cantieri"></div>
+        </div>
+        <!-- Orari -->
+        <div class="card" style="padding:0.75rem 1rem">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Modifica orari</div>
+          <div id="qr-orari-op" style="font-size:11px;color:var(--text3);margin-bottom:8px">— Seleziona operaio —</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <label style="font-size:11px;color:var(--text3);min-width:50px">Entrata</label>
+            <input type="time" id="qr-entrata" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Mono',monospace;background:var(--surface2)">
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+            <label style="font-size:11px;color:var(--text3);min-width:50px">Uscita</label>
+            <input type="time" id="qr-uscita" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Mono',monospace;background:var(--surface2)">
+          </div>
+          <button class="btn btn-primary" style="width:100%;font-size:12px;padding:6px" onclick="qrSalvaOrari()">✓ Aggiorna orari</button>
+        </div>
+        <!-- Assenza -->
+        <div class="card" style="padding:0.75rem 1rem">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Assenza</div>
+          <button class="qr-chip selected" id="qr-mot-malattia" onclick="qrSelMotiv('malattia')">Malattia</button>
+          <button class="qr-chip" id="qr-mot-ferie" onclick="qrSelMotiv('ferie')">Ferie</button>
+          <button class="qr-chip" id="qr-mot-infortunio" onclick="qrSelMotiv('infortunio')">Infortunio</button>
+          <button class="qr-chip" id="qr-mot-permesso" onclick="qrSelMotiv('permesso')">Permesso</button>
+          <button class="qr-chip" id="qr-mot-altro" onclick="qrSelMotiv('altro')">Altro</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="tab-presenze">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Registra presenza</span></div>
+      <div class="row"><label>Operaio</label><select id="p-operaio"></select></div>
+      <div class="row" id="row-cantiere"><label>Cantiere</label><select id="p-cantiere"></select></div>
+      <div class="row"><label>Data</label><input type="date" id="p-data"></div>
+      <div class="row">
+        <label>Entrata</label><input type="time" id="p-entrata" value="08:00">
+        <label style="min-width:50px">Uscita</label><input type="time" id="p-uscita" value="17:00">
+      </div>
+      <div class="row" id="row-motivazione" style="display:none">
+        <label>Motivazione</label>
+        <select id="p-motivazione">
+          <option value="malattia">Malattia</option>
+          <option value="ferie">Ferie</option>
+          <option value="infortunio">Infortunio</option>
+          <option value="permesso">Permesso</option>
+          <option value="altro">Altro</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-presenza" onclick="registraPresenza()">✓ Registra presenza</button>
+        <button class="btn btn-secondary" id="btn-toggle-assenza" onclick="toggleAssenza()">✗ Segna assenza</button>
+        <button class="btn btn-danger" id="btn-conferma-assenza" style="display:none" onclick="registraAssenza()">✗ Conferma assenza</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Presenze registrate</span>
+        <button class="btn btn-danger" onclick="azzeraPresenze()">🗑 Azzera tutte</button>
+      </div>
+      <div class="filter-bar">
+        <label>Data</label><input type="date" id="f-data" oninput="renderPresenzeTable()">
+        <label>Cantiere</label><select id="f-cantiere" onchange="renderPresenzeTable()"><option value="">Tutti</option></select>
+        <button class="btn btn-ghost" onclick="document.getElementById('f-data').value='';document.getElementById('f-cantiere').value='';renderPresenzeTable()">Azzera filtri</button>
+      </div>
+      <div id="presenze-table"></div>
+    </div>
+  </div>
+
+  <div class="section" id="tab-anagrafiche">
+    <div style="display:flex;gap:0;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <button id="sub-operai" onclick="showSubTab('operai')" style="flex:1;padding:10px;border:none;background:var(--accent);color:#fff;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase">Operai</button>
+      <button id="sub-cantieri" onclick="showSubTab('cantieri')" style="flex:1;padding:10px;border:none;background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase">Cantieri</button>
+    </div>
+
+    <div id="subtab-operai">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Aggiungi operaio</span></div>
+        <div class="row"><label>Nome</label><input type="text" id="op-nome" placeholder="Nome e cognome"></div>
+        <div class="row"><label>Ruolo</label><input type="text" id="op-ruolo" placeholder="es. Muratore, Carpentiere..."></div>
+        <div class="row"><label>Telefono</label><input type="tel" id="op-tel" placeholder="es. 333 1234567"></div>
+        <div class="row"><label>Stato</label>
+          <select id="op-stato">
+            <option value="attivo">In attività</option><option value="malattia">Malattia</option>
+            <option value="infortunio">Infortunio</option><option value="ferie">Ferie</option>
+            <option value="licenziato">Licenziato</option>
+          </select>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" onclick="aggiungiOperaio()">+ Aggiungi operaio</button></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Lista operai</span></div>
+        <div class="stato-filters">
+          <button class="btn btn-ghost active-filter" id="filtro-tutti" onclick="filtraStato('')">Tutti</button>
+          <button class="btn btn-ghost" id="filtro-attivo" onclick="filtraStato('attivo')">Attivi</button>
+          <button class="btn btn-ghost" id="filtro-malattia" onclick="filtraStato('malattia')">Malattia</button>
+          <button class="btn btn-ghost" id="filtro-infortunio" onclick="filtraStato('infortunio')">Infortunio</button>
+          <button class="btn btn-ghost" id="filtro-ferie" onclick="filtraStato('ferie')">Ferie</button>
+          <button class="btn btn-ghost" id="filtro-licenziato" onclick="filtraStato('licenziato')">Licenziati</button>
+        </div>
+        <div id="operai-list"></div>
+      </div>
+    </div>
+
+    <div id="subtab-cantieri" style="display:none">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Aggiungi cantiere</span></div>
+        <div class="row"><label>Nome</label><input type="text" id="c-nome" placeholder="Nome cantiere"></div>
+        <div class="row"><label>Indirizzo</label><input type="text" id="c-ind" placeholder="Via, città..."></div>
+        <div class="row"><label>Responsabile</label><input type="text" id="c-resp" placeholder="Nome responsabile"></div>
+        <div class="form-actions"><button class="btn btn-primary" onclick="aggiungiCantiere()">+ Aggiungi cantiere</button></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Lista cantieri</span></div>
+        <div id="cantieri-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="tab-report">
+
+    <!-- sotto-tab -->
+    <div style="display:flex;gap:0;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <button id="rp-sub-operai" onclick="rpShowSub('operai')" style="flex:1;padding:10px;border:none;background:var(--accent);color:#fff;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase">Operai</button>
+      <button id="rp-sub-cantieri" onclick="rpShowSub('cantieri')" style="flex:1;padding:10px;border:none;background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase">Cantieri</button>
+      <button id="rp-sub-attivita" onclick="rpShowSub('attivita')" style="flex:1;padding:10px;border:none;background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase">Attività</button>
+    </div>
+
+    <!-- Sub-tab Operai -->
+    <div id="rp-tab-operai">
+      <div style="display:grid;grid-template-columns:180px 1fr;gap:1rem;align-items:start" class="qr-two-col">
+        <div style="display:flex;flex-direction:column;gap:0.75rem;position:sticky;top:1rem">
+          <div class="card" style="padding:0.75rem 1rem">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Periodo</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button class="btn btn-secondary" style="padding:4px 10px" onclick="rpCambiaOp(-1)">&#8592;</button>
+              <span id="rp-label-op" style="flex:1;text-align:center;font-size:12px;font-weight:700"></span>
+              <button class="btn btn-secondary" style="padding:4px 10px" onclick="rpCambiaOp(1)">&#8594;</button>
+            </div>
+          </div>
+          <div class="card" style="padding:0.75rem 1rem">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Operaio</div>
+            <div id="rp-operai"></div>
+          </div>
+        </div>
+        <div class="card" id="rp-risultato-op">
+          <div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un operaio</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sub-tab Cantieri -->
+    <div id="rp-tab-cantieri" style="display:none">
+      <div style="display:grid;grid-template-columns:180px 1fr;gap:1rem;align-items:start" class="qr-two-col">
+        <div style="display:flex;flex-direction:column;gap:0.75rem;position:sticky;top:1rem">
+          <div class="card" style="padding:0.75rem 1rem">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Periodo</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button class="btn btn-secondary" style="padding:4px 10px" onclick="rpCambiaCant(-1)">&#8592;</button>
+              <span id="rp-label-cant" style="flex:1;text-align:center;font-size:12px;font-weight:700"></span>
+              <button class="btn btn-secondary" style="padding:4px 10px" onclick="rpCambiaCant(1)">&#8594;</button>
+            </div>
+          </div>
+          <div class="card" style="padding:0.75rem 1rem">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Cantiere</div>
+            <div id="rp-cantieri"></div>
+          </div>
+        </div>
+        <div class="card" id="rp-risultato-cant">
+          <div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un cantiere</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sub-tab Attività -->
+    <div id="rp-tab-attivita" style="display:none">
+      <div style="display:grid;grid-template-columns:180px 1fr;gap:1rem;align-items:start" class="qr-two-col">
+        <div style="display:flex;flex-direction:column;gap:0.75rem;position:sticky;top:1rem">
+          <div class="card" style="padding:0.75rem 1rem">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Periodo</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button class="btn btn-secondary" style="padding:4px 10px" onclick="raChangeMese(-1)">&#8592;</button>
+              <span id="ra-label" style="flex:1;text-align:center;font-size:12px;font-weight:700"></span>
+              <button class="btn btn-secondary" style="padding:4px 10px" onclick="raChangeMese(1)">&#8594;</button>
+            </div>
+          </div>
+          <div class="card" style="padding:0.75rem 1rem">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Cantiere</div>
+            <div id="ra-cantieri"></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1rem">
+          <div class="card" id="ra-calendario">
+            <div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un cantiere</div>
+          </div>
+          <div class="card" id="ra-tabella">
+            <div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un cantiere</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="tab-attivita">
+    <!-- Sotto-tab cantieri -->
+    <div id="att-subtabs" style="display:flex;gap:0;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;flex-wrap:wrap"></div>
+
+    <!-- Contenuto cantiere selezionato -->
+    <div id="att-content">
+      <div class="empty" style="padding:2rem;text-align:center;color:var(--text3)">Nessun cantiere disponibile</div>
+    </div>
+
+    <!-- Modal annotazione giorno -->
+    <div id="att-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:90%;max-width:480px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.18)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+          <span id="att-modal-title" style="font-size:15px;font-weight:700"></span>
+          <button class="btn btn-ghost" onclick="attChiudiModal()" style="padding:4px 10px;font-size:16px">✕</button>
+        </div>
+        <input type="hidden" id="att-modal-cant">
+        <input type="hidden" id="att-modal-data">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Categorie</div>
+        <div id="att-modal-categorie" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem"></div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:6px">Note</div>
+        <textarea id="att-modal-note" style="width:100%;min-height:80px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--surface2);resize:vertical;box-sizing:border-box" placeholder="Descrizione attività del giorno..."></textarea>
+        <div class="form-actions" style="margin-top:1rem">
+          <button class="btn btn-primary" onclick="attSalvaGiorno()">✓ Salva</button>
+          <button class="btn btn-ghost" onclick="attChiudiModal()">Annulla</button>
+          <button class="btn btn-danger" id="att-modal-elimina" style="display:none" onclick="attEliminaGiorno()">Elimina</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPOSTAZIONI -->
+  <div class="section" id="tab-impostazioni">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Orari di default</span></div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:1.25rem;line-height:1.6">
+        Questi orari vengono precompilati automaticamente ogni volta che registri una nuova presenza.
+      </p>
+      <div class="row">
+        <label>Entrata</label>
+        <input type="time" id="imp-entrata" style="max-width:160px">
+      </div>
+      <div class="row">
+        <label>Uscita</label>
+        <input type="time" id="imp-uscita" style="max-width:160px">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="salvaImpostazioni()">✓ Salva impostazioni</button>
+        <button class="btn btn-ghost" onclick="resetImpostazioni()">Ripristina default (08:00 – 17:00)</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Categorie attività</span></div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:1rem;line-height:1.6">Gestisci le categorie disponibili per annotare le attività nei cantieri.</p>
+      <div id="imp-categorie-lista" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="imp-cat-nuova" placeholder="Nuova categoria..." style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--surface2)">
+        <button class="btn btn-primary" onclick="impAggiungiCategoria()">+ Aggiungi</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="modal-conferma">
+  <div class="modal" style="max-width:360px">
+    <p id="conferma-msg" style="font-size:14px;margin-bottom:1.25rem;line-height:1.6;color:var(--text2)"></p>
+    <div class="form-actions">
+      <button class="btn btn-danger" style="font-size:13px;padding:7px 16px" id="conferma-ok">Conferma</button>
+      <button class="btn btn-secondary" onclick="chiudiConferma()">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-operaio">
+  <div class="modal">
+    <h2>Modifica operaio</h2>
+    <input type="hidden" id="edit-op-id">
+    <div class="row"><label>Nome</label><input type="text" id="edit-op-nome"></div>
+    <div class="row"><label>Ruolo</label><input type="text" id="edit-op-ruolo"></div>
+    <div class="row"><label>Telefono</label><input type="tel" id="edit-op-tel"></div>
+    <div class="row"><label>Stato</label>
+      <select id="edit-op-stato">
+        <option value="attivo">In attività</option><option value="malattia">Malattia</option>
+        <option value="infortunio">Infortunio</option><option value="ferie">Ferie</option>
+        <option value="licenziato">Licenziato</option>
+      </select>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="salvaModificaOperaio()">Salva</button>
+      <button class="btn btn-secondary" onclick="chiudiModalOperaio()">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-cantiere">
+  <div class="modal">
+    <h2>Modifica cantiere</h2>
+    <input type="hidden" id="edit-c-id">
+    <div class="row"><label>Nome</label><input type="text" id="edit-c-nome"></div>
+    <div class="row"><label>Indirizzo</label><input type="text" id="edit-c-ind"></div>
+    <div class="row"><label>Responsabile</label><input type="text" id="edit-c-resp"></div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="salvaModificaCantiere()">Salva</button>
+      <button class="btn btn-secondary" onclick="chiudiModalCantiere()">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
+var _defOp=[{id:1,nome:"Mario Rossi",ruolo:"Muratore",tel:"",stato:"attivo"},{id:2,nome:"Giuseppe Bianchi",ruolo:"Carpentiere",tel:"",stato:"attivo"},{id:3,nome:"Luca Verdi",ruolo:"Elettricista",tel:"",stato:"attivo"}];
+var _defCant=[{id:1,nome:"Via Roma 12",indirizzo:"Via Roma 12, Arezzo",resp:""},{id:2,nome:"Residenza Alba",indirizzo:"Via Garibaldi 5, Arezzo",resp:""}];
+var operai=load('op_operai',_defOp),cantieri=load('op_cantieri',_defCant),presenze=load('op_presenze',[]);
+var nextOpId=load('op_noid',4),nextCId=load('op_ncid',3),nextPId=load('op_npid',1);
+var impostazioni=load('op_impostazioni',{entrata:'08:00',uscita:'17:00'});
+function localDateStr(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+var oggi=localDateStr();
+var calAnno=new Date().getFullYear(),calMese=new Date().getMonth();
+var filtroStatoAttivo='';
+
+function persist(){
+  save('op_operai',operai);save('op_cantieri',cantieri);save('op_presenze',presenze);
+  save('op_noid',nextOpId);save('op_ncid',nextCId);save('op_npid',nextPId);
+  var st=document.getElementById('salva-status');
+  if(st){st.textContent='✓ salvato';setTimeout(function(){st.textContent='';},2000);}
+}
+function nomeOp(id){var o=operai.find(function(x){return x.id==id;});return o?o.nome:'—';}
+function nomeCant(id){var c=cantieri.find(function(x){return x.id==id;});return c?c.nome:'—';}
+function calcOre(e,u){if(!e||!u)return 0;var eh=parseInt(e),em=parseInt(e.split(':')[1]),uh=parseInt(u),um=parseInt(u.split(':')[1]);return Math.round(((uh*60+um)-(eh*60+em))/60);}
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
+function apriConferma(msg,onOk){
+  document.getElementById('conferma-msg').textContent=msg;
+  var btn=document.getElementById('conferma-ok');
+  btn.onclick=function(){chiudiConferma();onOk();};
+  document.getElementById('modal-conferma').classList.add('open');
+}
+function chiudiConferma(){document.getElementById('modal-conferma').classList.remove('open');}
+
+function initImpostazioni(){
+  document.getElementById('imp-entrata').value=impostazioni.entrata||'08:00';
+  document.getElementById('imp-uscita').value=impostazioni.uscita||'17:00';
+}
+function salvaImpostazioni(){
+  var ent=document.getElementById('imp-entrata').value;
+  var usc=document.getElementById('imp-uscita').value;
+  if(!ent||!usc){toast('Inserisci entrambi gli orari!');return;}
+  if(ent>=usc){toast('⚠️ L\'uscita deve essere dopo l\'entrata!');return;}
+  impostazioni={entrata:ent,uscita:usc};
+  save('op_impostazioni',impostazioni);
+  var pe=document.getElementById('p-entrata');var pu=document.getElementById('p-uscita');
+  if(pe)pe.value=ent;if(pu)pu.value=usc;
+  toast('✓ Impostazioni salvate!');
+}
+function resetImpostazioni(){
+  impostazioni={entrata:'08:00',uscita:'17:00'};
+  save('op_impostazioni',impostazioni);
+  document.getElementById('imp-entrata').value='08:00';
+  document.getElementById('imp-uscita').value='17:00';
+  var pe=document.getElementById('p-entrata');var pu=document.getElementById('p-uscita');
+  if(pe)pe.value='08:00';if(pu)pu.value='17:00';
+  toast('Orari ripristinati ai default.');
+}
+
+function refreshTutto(){
+  renderPresenzeTable();renderOperai();renderCantieri();renderReport();initAnniSelect();initCalendario();
+}
+
+function showTab(id,btn){
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.nav button').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='dashboard')initCalendario();
+  if(id==='presenze'){populateSelects();renderPresenzeTable();}
+  if(id==='anagrafiche'){renderOperai();renderCantieri();}
+  if(id==='report')initReport();
+  if(id==='attivita')initAttivita();
+  if(id==='impostazioni'){initImpostazioni();impRenderCategorie();}
+}
+
+function showSubTab(id){
+  ['operai','cantieri'].forEach(function(name){
+    var el=document.getElementById('subtab-'+name);
+    if(el)el.style.display=name===id?'':'none';
+    var btn=document.getElementById('sub-'+name);
+    if(btn){btn.style.background=name===id?'var(--accent)':'transparent';btn.style.color=name===id?'#fff':'var(--text2)';}
+  });
+}
+
+function populateSelects(){
+  var sp=document.getElementById('p-operaio');
+  if(sp){sp.innerHTML='<option value="">— Seleziona operaio —</option>';operai.forEach(function(o){var opt=document.createElement('option');opt.value=o.id;opt.textContent=o.nome+(o.ruolo?' ('+o.ruolo+')':'');sp.appendChild(opt);});}
+  ['p-cantiere','f-cantiere'].forEach(function(sid){
+    var s=document.getElementById(sid);if(!s)return;
+    var prev=s.value;
+    s.innerHTML=sid==='f-cantiere'?'<option value="">Tutti i cantieri</option>':'<option value="">— Seleziona cantiere —</option>';
+    cantieri.forEach(function(c){var opt=document.createElement('option');opt.value=c.id;opt.textContent=c.nome;s.appendChild(opt);});
+    if(prev)s.value=prev;
+  });
+}
+
+function renderDashboard(){
+  var oggiP=presenze.filter(function(p){return p.data===oggi;});
+  var presenti=oggiP.filter(function(p){return !p.assente;}).length;
+  var assenti=oggiP.filter(function(p){return p.assente;}).length;
+  var cantAttivi=new Set(oggiP.filter(function(p){return !p.assente;}).map(function(p){return p.cantiereId;})).size;
+  var ore=oggiP.filter(function(p){return !p.assente;}).reduce(function(s,p){return s+calcOre(p.entrata,p.uscita);},0);
+  var mg=document.getElementById('metrics');
+  if(mg)mg.innerHTML='<div class="metric"><div class="metric-label">Presenti oggi</div><div class="metric-value blue">'+presenti+'</div></div>'+
+    '<div class="metric"><div class="metric-label">Assenti oggi</div><div class="metric-value red">'+assenti+'</div></div>'+
+    '<div class="metric"><div class="metric-label">Cantieri attivi</div><div class="metric-value orange">'+cantAttivi+'</div></div>'+
+    '<div class="metric"><div class="metric-label">Ore totali oggi</div><div class="metric-value green">'+ore+'</div></div>';
+  var ot=document.getElementById('oggi-table');if(!ot)return;
+  if(!oggiP.length){ot.innerHTML='<div class="empty">Nessuna presenza registrata oggi.</div>';return;}
+  ot.innerHTML='<table><thead><tr><th>Operaio</th><th>Cantiere</th><th>Entrata</th><th>Uscita</th><th>Ore</th><th>Stato</th></tr></thead><tbody>'+
+    oggiP.map(function(p){return '<tr><td><strong>'+nomeOp(p.operaioId)+'</strong></td><td>'+nomeCant(p.cantiereId)+'</td><td>'+(p.assente?'—':p.entrata)+'</td><td>'+(p.assente?'—':p.uscita)+'</td><td>'+(p.assente?'—':calcOre(p.entrata,p.uscita)+'h')+'</td><td>'+badgeAssenza(p)+'</td></tr>';}).join('')+'</tbody></table>';
+}
+
+function orariSovrapposti(e1,u1,e2,u2){
+  function toMin(t){var p=t.split(':');return parseInt(p[0])*60+parseInt(p[1]);}
+  return toMin(e1)<toMin(u2)&&toMin(u1)>toMin(e2);
+}
+
+function registraPresenza(){
+  var op=document.getElementById('p-operaio').value;
+  var cant=document.getElementById('p-cantiere').value;
+  var data=document.getElementById('p-data').value;
+  var ent=document.getElementById('p-entrata').value;
+  var usc=document.getElementById('p-uscita').value;
+  if(!op||!cant||!data||!ent||!usc){toast('Compila tutti i campi!');return;}
+  if(ent>=usc){toast('⚠️ L\'uscita deve essere dopo l\'entrata!');return;}
+  var giàAssente=presenze.find(function(p){return p.operaioId===parseInt(op)&&p.data===data&&p.assente;});
+  if(giàAssente){toast('⚠️ '+nomeOp(parseInt(op))+' è già segnato assente in questa data!');return;}
+  var sov=presenze.filter(function(p){return p.operaioId===parseInt(op)&&p.data===data&&!p.assente&&orariSovrapposti(ent,usc,p.entrata,p.uscita);});
+  if(sov.length>0){toast('⚠️ '+nomeOp(parseInt(op))+' è già presente su "'+nomeCant(sov[0].cantiereId)+'" dalle '+sov[0].entrata+' alle '+sov[0].uscita+'!');return;}
+  presenze.push({id:nextPId++,operaioId:parseInt(op),cantiereId:parseInt(cant),data:data,entrata:ent,uscita:usc,assente:false});
+  document.getElementById('p-entrata').value=impostazioni.entrata||'08:00';
+  document.getElementById('p-uscita').value=impostazioni.uscita||'17:00';
+  persist();refreshTutto();toast('✓ Presenza registrata!');
+}
+
+var MOTIVAZIONI={malattia:'Malattia',ferie:'Ferie',infortunio:'Infortunio',permesso:'Permesso',altro:'Altro'};
+function badgeAssenza(p){
+  if(!p.assente)return '<span class="badge badge-in">Presente</span>';
+  var label=p.motivazione?MOTIVAZIONI[p.motivazione]||p.motivazione:'Assente';
+  return '<span class="badge badge-abs">'+label+'</span>';
+}
+
+function toggleAssenza(){
+  var rowMot=document.getElementById('row-motivazione');
+  var rowCant=document.getElementById('row-cantiere');
+  var rowEnt=document.getElementById('p-entrata').closest('.row');
+  var btnPresenza=document.getElementById('btn-presenza');
+  var btnToggle=document.getElementById('btn-toggle-assenza');
+  var btnConferma=document.getElementById('btn-conferma-assenza');
+  var apri=rowMot.style.display==='none';
+  rowMot.style.display=apri?'flex':'none';
+  rowCant.style.display=apri?'none':'';
+  if(rowEnt)rowEnt.style.display=apri?'none':'';
+  btnPresenza.style.display=apri?'none':'';
+  btnConferma.style.display=apri?'':'none';
+  btnToggle.textContent=apri?'↩ Annulla':'✗ Segna assenza';
+}
+
+function registraAssenza(){
+  var op=document.getElementById('p-operaio').value;
+  var data=document.getElementById('p-data').value;
+  var motivazione=document.getElementById('p-motivazione').value;
+  if(!op||!data){toast('Seleziona operaio e data!');return;}
+  var giàPresente=presenze.find(function(p){return p.operaioId===parseInt(op)&&p.data===data&&!p.assente;});
+  if(giàPresente){toast('⚠️ '+nomeOp(parseInt(op))+' è già segnato presente in questa data!');return;}
+  var giàAssente=presenze.find(function(p){return p.operaioId===parseInt(op)&&p.data===data&&p.assente;});
+  if(giàAssente){toast('⚠️ '+nomeOp(parseInt(op))+' è già segnato assente in questa data!');return;}
+  presenze.push({id:nextPId++,operaioId:parseInt(op),cantiereId:0,data:data,entrata:'',uscita:'',assente:true,motivazione:motivazione});
+  // reset form
+  document.getElementById('row-motivazione').style.display='none';
+  document.getElementById('row-cantiere').style.display='';
+  var rowEnt=document.getElementById('p-entrata').closest('.row');
+  if(rowEnt)rowEnt.style.display='';
+  document.getElementById('btn-presenza').style.display='';
+  document.getElementById('btn-conferma-assenza').style.display='none';
+  document.getElementById('btn-toggle-assenza').textContent='✗ Segna assenza';
+  persist();refreshTutto();toast('✓ Assenza registrata!');
+}
+
+function azzeraPresenze(){
+  apriConferma('Eliminare tutte le '+presenze.length+' presenze? Operai e cantieri rimarranno invariati.',function(){
+    presenze=[];nextPId=1;persist();refreshTutto();toast('Tutte le presenze eliminate.');
+  });
+}
+
+function eliminaPresenza(id){
+  presenze=presenze.filter(function(p){return p.id!==parseInt(id);});
+  persist();refreshTutto();toast('Presenza eliminata.');
+}
+
+function renderPresenzeTable(){
+  var fDataEl=document.getElementById('f-data');
+  var fCantEl=document.getElementById('f-cantiere');
+  if(!fDataEl||!fCantEl)return;
+  var fData=fDataEl.value,fCant=fCantEl.value;
+  var filtered=presenze.slice();
+  if(fData)filtered=filtered.filter(function(p){return p.data===fData;});
+  if(fCant)filtered=filtered.filter(function(p){return p.cantiereId==fCant;});
+  filtered.sort(function(a,b){return b.data.localeCompare(a.data);});
+  var el=document.getElementById('presenze-table');if(!el)return;
+  if(!filtered.length){el.innerHTML='<div class="empty">Nessuna presenza trovata.</div>';return;}
+  el.innerHTML='<table><thead><tr><th>Operaio</th><th>Cantiere</th><th>Data</th><th>Entrata</th><th>Uscita</th><th>Ore</th><th>Stato</th><th></th></tr></thead><tbody>'+
+    filtered.map(function(p){return '<tr><td><strong>'+nomeOp(p.operaioId)+'</strong></td><td>'+nomeCant(p.cantiereId)+'</td>'+
+      '<td style="font-family:\'DM Mono\',monospace;font-size:12px">'+p.data+'</td>'+
+      '<td>'+(p.assente?'—':p.entrata)+'</td><td>'+(p.assente?'—':p.uscita)+'</td>'+
+      '<td>'+(p.assente?'—':calcOre(p.entrata,p.uscita)+'h')+'</td>'+
+      '<td>'+badgeAssenza(p)+'</td>'+
+      '<td><button class="btn btn-danger" onclick="eliminaPresenza('+p.id+')">Elimina</button></td></tr>';}).join('')+'</tbody></table>';
+}
+
+var STATI={attivo:{label:'In attività',emoji:'',color:'#2E6B3E',bg:'#EAF3EE',border:'#A8D4B8'},malattia:{label:'Malattia',emoji:'',color:'#1D4E8F',bg:'#E8EFF8',border:'#A8C0E4'},infortunio:{label:'Infortunio',emoji:'',color:'#7B3F00',bg:'#FDF3E8',border:'#E8C898'},ferie:{label:'Ferie',emoji:'',color:'#5C3A8C',bg:'#F3EEF9',border:'#C8A8E8'},licenziato:{label:'Licenziato',emoji:'',color:'#A32D2D',bg:'#FCEBEB',border:'#F0C0C0'}};
+
+function statoChip(stato){
+  var s=STATI[stato]||STATI.attivo;
+  return '<span class="stato-chip" style="color:'+s.color+';background:'+s.bg+';border-color:'+s.border+'">'+s.emoji+' '+s.label+'</span>';
+}
+
+function filtraStato(stato){
+  filtroStatoAttivo=stato;
+  document.querySelectorAll('.stato-filters .btn').forEach(function(b){b.classList.remove('active-filter');});
+  var id=stato?'filtro-'+stato:'filtro-tutti';
+  var el=document.getElementById(id);if(el)el.classList.add('active-filter');
+  renderOperai();
+}
+
+function aggiungiOperaio(){
+  var nome=document.getElementById('op-nome').value.trim();
+  var ruolo=document.getElementById('op-ruolo').value.trim();
+  var tel=document.getElementById('op-tel').value.trim();
+  var stato=document.getElementById('op-stato').value;
+  if(!nome){toast('Inserisci il nome dell\'operaio!');return;}
+  operai.push({id:nextOpId++,nome:nome,ruolo:ruolo||'—',tel:tel,stato:stato});
+  document.getElementById('op-nome').value='';document.getElementById('op-ruolo').value='';document.getElementById('op-tel').value='';
+  persist();renderOperai();populateSelects();toast('✓ Operaio aggiunto!');
+}
+
+function eliminaOperaio(id){
+  var o=operai.find(function(x){return x.id===parseInt(id);});if(!o)return;
+  var n=presenze.filter(function(p){return p.operaioId===parseInt(id);}).length;
+  apriConferma('Rimuovere "'+o.nome+'"?'+(n?' Verranno eliminati anche '+n+' record di presenza.':''),function(){
+    operai=operai.filter(function(x){return x.id!==parseInt(id);});
+    presenze=presenze.filter(function(p){return p.operaioId!==parseInt(id);});
+    persist();refreshTutto();populateSelects();toast('Operaio rimosso.');
+  });
+}
+
+function renderOperai(){
+  var lista=filtroStatoAttivo?operai.filter(function(o){return(o.stato||'attivo')===filtroStatoAttivo;}):operai;
+  var el=document.getElementById('operai-list');if(!el)return;
+  if(!lista.length){el.innerHTML='<div class="empty">'+(filtroStatoAttivo?'Nessun operaio con questo stato.':'Nessun operaio aggiunto.')+'</div>';return;}
+  el.innerHTML='<table><thead><tr><th>Nome</th><th>Ruolo</th><th>Stato</th><th>Telefono</th><th>Giorni</th><th>Ore tot.</th><th></th></tr></thead><tbody>'+
+    lista.map(function(o){
+      var pp=presenze.filter(function(p){return p.operaioId===o.id&&!p.assente;});
+      var ore=pp.reduce(function(s,p){return s+calcOre(p.entrata,p.uscita);},0);
+      return '<tr><td><strong>'+o.nome+'</strong></td><td><span class="chip">'+o.ruolo+'</span></td><td>'+statoChip(o.stato||'attivo')+'</td>'+
+        '<td style="color:var(--text3);font-family:\'DM Mono\',monospace;font-size:12px">'+(o.tel||'—')+'</td>'+
+        '<td><strong>'+pp.length+'</strong></td><td><strong>'+ore+'h</strong></td>'+
+        '<td style="display:flex;gap:5px"><button class="btn btn-ghost" onclick="apriModalOperaio('+o.id+')">Modifica</button><button class="btn btn-danger" onclick="eliminaOperaio('+o.id+')">Rimuovi</button></td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+function apriModalOperaio(id){
+  var o=operai.find(function(x){return x.id===parseInt(id);});if(!o)return;
+  document.getElementById('edit-op-id').value=o.id;document.getElementById('edit-op-nome').value=o.nome;
+  document.getElementById('edit-op-ruolo').value=o.ruolo==='—'?'':o.ruolo;
+  document.getElementById('edit-op-tel').value=o.tel||'';document.getElementById('edit-op-stato').value=o.stato||'attivo';
+  document.getElementById('modal-operaio').classList.add('open');
+}
+function chiudiModalOperaio(){document.getElementById('modal-operaio').classList.remove('open');}
+function salvaModificaOperaio(){
+  var id=parseInt(document.getElementById('edit-op-id').value);
+  var nome=document.getElementById('edit-op-nome').value.trim();
+  var ruolo=document.getElementById('edit-op-ruolo').value.trim();
+  var tel=document.getElementById('edit-op-tel').value.trim();
+  var stato=document.getElementById('edit-op-stato').value;
+  if(!nome){toast('Il nome è obbligatorio!');return;}
+  var o=operai.find(function(x){return x.id===parseInt(id);});
+  if(o){o.nome=nome;o.ruolo=ruolo||'—';o.tel=tel;o.stato=stato;}
+  persist();renderOperai();populateSelects();chiudiModalOperaio();toast('✓ Operaio aggiornato!');
+}
+
+function aggiungiCantiere(){
+  var nome=document.getElementById('c-nome').value.trim();
+  var ind=document.getElementById('c-ind').value.trim();
+  var resp=document.getElementById('c-resp').value.trim();
+  if(!nome){toast('Inserisci il nome del cantiere!');return;}
+  cantieri.push({id:nextCId++,nome:nome,indirizzo:ind||'—',resp:resp});
+  document.getElementById('c-nome').value='';document.getElementById('c-ind').value='';document.getElementById('c-resp').value='';
+  persist();renderCantieri();populateSelects();toast('✓ Cantiere aggiunto!');
+}
+
+function eliminaCantiere(id){
+  var c=cantieri.find(function(x){return x.id===parseInt(id);});if(!c)return;
+  var n=presenze.filter(function(p){return p.cantiereId===parseInt(id);}).length;
+  apriConferma('Rimuovere "'+c.nome+'"?'+(n?' Verranno eliminati anche '+n+' record di presenza.':''),function(){
+    cantieri=cantieri.filter(function(x){return x.id!==parseInt(id);});
+    presenze=presenze.filter(function(p){return p.cantiereId!==parseInt(id);});
+    persist();refreshTutto();populateSelects();toast('Cantiere rimosso.');
+  });
+}
+
+function renderCantieri(){
+  var el=document.getElementById('cantieri-list');if(!el)return;
+  if(!cantieri.length){el.innerHTML='<div class="empty">Nessun cantiere aggiunto.</div>';return;}
+  el.innerHTML='<table><thead><tr><th>Nome</th><th>Indirizzo</th><th>Responsabile</th><th>Giorni att.</th><th></th></tr></thead><tbody>'+
+    cantieri.map(function(c){
+      var gg=new Set(presenze.filter(function(p){return p.cantiereId===c.id&&!p.assente;}).map(function(p){return p.data;})).size;
+      return '<tr><td><strong>'+c.nome+'</strong></td><td style="color:var(--text2)">'+c.indirizzo+'</td><td style="color:var(--text2)">'+(c.resp||'—')+'</td><td><strong>'+gg+'</strong></td>'+
+        '<td style="display:flex;gap:5px"><button class="btn btn-ghost" onclick="apriModalCantiere('+c.id+')">Modifica</button><button class="btn btn-danger" onclick="eliminaCantiere('+c.id+')">Rimuovi</button></td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+function apriModalCantiere(id){
+  var c=cantieri.find(function(x){return x.id===parseInt(id);});if(!c)return;
+  document.getElementById('edit-c-id').value=c.id;document.getElementById('edit-c-nome').value=c.nome;
+  document.getElementById('edit-c-ind').value=c.indirizzo==='—'?'':c.indirizzo;
+  document.getElementById('edit-c-resp').value=c.resp||'';
+  document.getElementById('modal-cantiere').classList.add('open');
+}
+function chiudiModalCantiere(){document.getElementById('modal-cantiere').classList.remove('open');}
+function salvaModificaCantiere(){
+  var id=parseInt(document.getElementById('edit-c-id').value);
+  var nome=document.getElementById('edit-c-nome').value.trim();
+  var ind=document.getElementById('edit-c-ind').value.trim();
+  var resp=document.getElementById('edit-c-resp').value.trim();
+  if(!nome){toast('Il nome è obbligatorio!');return;}
+  var c=cantieri.find(function(x){return x.id===parseInt(id);});
+  if(c){c.nome=nome;c.indirizzo=ind||'—';c.resp=resp;}
+  persist();renderCantieri();populateSelects();chiudiModalCantiere();toast('✓ Cantiere aggiornato!');
+}
+
+// ── REPORT ──────────────────────────────────────────────
+var rpAnnoOp=new Date().getFullYear(), rpMeseOp=new Date().getMonth()+1, rpOpSel=[];
+var rpAnnoCant=new Date().getFullYear(), rpMeseCant=new Date().getMonth()+1, rpCantSel=[];
+var rpSubAttivo='operai';
+var mesiIt=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+var mesiBrevi=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+
+function initReport(){
+  rpAggiornaLabelOp();rpAggiornaLabelCant();
+  rpRenderOperai();rpRenderCantieri();
+  rpRenderRisultatoOp();rpRenderRisultatoCant();
+}
+
+function rpAggiornaLabelOp(){
+  var el=document.getElementById('rp-label-op');
+  if(el)el.textContent=mesiIt[rpMeseOp-1]+' '+rpAnnoOp;
+}
+function rpAggiornaLabelCant(){
+  var el=document.getElementById('rp-label-cant');
+  if(el)el.textContent=mesiIt[rpMeseCant-1]+' '+rpAnnoCant;
+}
+function rpCambiaOp(delta){
+  rpMeseOp+=delta;
+  if(rpMeseOp>12){rpMeseOp=1;rpAnnoOp++;}
+  if(rpMeseOp<1){rpMeseOp=12;rpAnnoOp--;}
+  rpAggiornaLabelOp();rpRenderRisultatoOp();
+}
+function rpCambiaCant(delta){
+  rpMeseCant+=delta;
+  if(rpMeseCant>12){rpMeseCant=1;rpAnnoCant++;}
+  if(rpMeseCant<1){rpMeseCant=12;rpAnnoCant--;}
+  rpAggiornaLabelCant();rpRenderRisultatoCant();
+}
+
+function rpShowSub(sub){
+  rpSubAttivo=sub;
+  ['operai','cantieri','attivita'].forEach(function(s){
+    var tab=document.getElementById('rp-tab-'+s);
+    var btn=document.getElementById('rp-sub-'+s);
+    if(tab)tab.style.display=s===sub?'':'none';
+    if(btn){btn.style.background=s===sub?'var(--accent)':'transparent';btn.style.color=s===sub?'#fff':'var(--text2)';}
+  });
+  if(sub==='attivita')initReportAtt();
+}
+
+function rpRenderOperai(){
+  var el=document.getElementById('rp-operai');if(!el)return;
+  el.innerHTML=operai.map(function(o){
+    var sel=rpOpSel.indexOf(o.id)>=0;
+    return '<button class="qr-chip'+(sel?' selected':'')+'" onclick="rpToggleOp('+o.id+')">'+o.nome+'</button>';
+  }).join('');
+}
+
+function rpToggleOp(id){
+  var idx=rpOpSel.indexOf(id);
+  if(idx>=0)rpOpSel.splice(idx,1);else rpOpSel.push(id);
+  rpRenderOperai();rpRenderRisultatoOp();
+}
+
+function rpRenderCantieri(){
+  var el=document.getElementById('rp-cantieri');if(!el)return;
+  el.innerHTML=cantieri.map(function(c){
+    var sel=rpCantSel.indexOf(c.id)>=0;
+    return '<button class="qr-chip'+(sel?' selected':'')+'" onclick="rpToggleCant('+c.id+')">'+c.nome+'</button>';
+  }).join('');
+}
+
+function rpToggleCant(id){
+  var idx=rpCantSel.indexOf(id);
+  if(idx>=0)rpCantSel.splice(idx,1);else rpCantSel.push(id);
+  rpRenderCantieri();rpRenderRisultatoCant();
+}
+
+function rpRenderRisultatoOp(){
+  var el=document.getElementById('rp-risultato-op');if(!el)return;
+  if(!rpOpSel.length){el.innerHTML='<div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona uno o più operai</div>';return;}
+  var meseStr=rpAnnoOp+'-'+String(rpMeseOp).padStart(2,'0');
+  var colori=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];
+
+  // Legenda
+  var legenda=rpOpSel.map(function(id,i){
+    var o=operai.find(function(x){return x.id===id;});if(!o)return '';
+    var pp=presenze.filter(function(p){return p.operaioId===id&&p.data.startsWith(meseStr)&&!p.assente;});
+    var ass=presenze.filter(function(p){return p.operaioId===id&&p.data.startsWith(meseStr)&&p.assente;}).length;
+    var ore=pp.reduce(function(s,p){return s+calcOre(p.entrata,p.uscita);},0);
+    var col=colori[i%colori.length];
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
+      '<span style="width:12px;height:12px;border-radius:3px;background:'+col+';flex-shrink:0;display:inline-block"></span>'+
+      '<span style="font-size:12px;font-weight:600">'+o.nome+'</span>'+
+      '<span style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text2)">'+pp.length+'gg · '+ore+'h · '+ass+' ass.</span>'+
+    '</div>';
+  }).join('');
+
+  el.innerHTML='<div class="card-header" style="margin-bottom:0.75rem">'+
+    '<span class="card-title">'+mesiIt[rpMeseOp-1]+' '+rpAnnoOp+'</span>'+
+    '</div>'+
+    '<div style="margin-bottom:1rem">'+legenda+'</div>'+
+    rpCalendario(meseStr,function(dateStr){
+      var righe=rpOpSel.map(function(id,i){
+        var p=presenze.find(function(x){return x.operaioId===id&&x.data===dateStr;});
+        if(!p)return '';
+        var o=operai.find(function(x){return x.id===id;});
+        var col=colori[i%colori.length];
+        var nome=o?o.nome.split(' ')[0]:'';
+        if(p.assente)return '<div class="cal-cell-info" style="font-size:9px;color:'+col+'">'+nome+' · '+(MOTIVAZIONI[p.motivazione]||'Assente')+'</div>';
+        return '<div class="cal-cell-info" style="font-size:9px;color:'+col+'">'+nome+' '+p.entrata+'–'+p.uscita+'</div>';
+      }).filter(Boolean).join('');
+      return righe;
+    },function(dateStr){
+      var hasPres=rpOpSel.some(function(id){return presenze.find(function(p){return p.operaioId===id&&p.data===dateStr&&!p.assente;});});
+      var hasAss=rpOpSel.some(function(id){return presenze.find(function(p){return p.operaioId===id&&p.data===dateStr&&p.assente;});});
+      if(hasPres)return 'present';if(hasAss)return 'absent';return '';
+    });
+}
+
+function rpRenderRisultatoCant(){
+  var el=document.getElementById('rp-risultato-cant');if(!el)return;
+  if(!rpCantSel.length){el.innerHTML='<div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona uno o più cantieri</div>';return;}
+  var meseStr=rpAnnoCant+'-'+String(rpMeseCant).padStart(2,'0');
+  var colori=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];
+
+  // Legenda
+  var legenda=rpCantSel.map(function(id,i){
+    var c=cantieri.find(function(x){return x.id===id;});if(!c)return '';
+    var pp=presenze.filter(function(p){return p.cantiereId===id&&p.data.startsWith(meseStr)&&!p.assente;});
+    var opIds=[...new Set(pp.map(function(p){return p.operaioId;}))];
+    var ore=pp.reduce(function(s,p){return s+calcOre(p.entrata,p.uscita);},0);
+    var col=colori[i%colori.length];
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
+      '<span style="width:12px;height:12px;border-radius:3px;background:'+col+';flex-shrink:0;display:inline-block"></span>'+
+      '<span style="font-size:12px;font-weight:600">'+c.nome+'</span>'+
+      '<span style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text2)">'+pp.length+' pres. · '+ore+'h · '+opIds.length+' operai</span>'+
+    '</div>';
+  }).join('');
+
+  el.innerHTML='<div class="card-header" style="margin-bottom:0.75rem">'+
+    '<span class="card-title">'+mesiIt[rpMeseCant-1]+' '+rpAnnoCant+'</span>'+
+    '</div>'+
+    '<div style="margin-bottom:1rem">'+legenda+'</div>'+
+    rpCalendario(meseStr,function(dateStr){
+      return rpCantSel.map(function(id,i){
+        var pp=presenze.filter(function(p){return p.cantiereId===id&&p.data===dateStr&&!p.assente;});
+        if(!pp.length)return '';
+        var c=cantieri.find(function(x){return x.id===id;});
+        var col=colori[i%colori.length];
+        var nome=c?c.nome.split(' ')[0]:'';
+        return pp.map(function(p){
+          return '<div class="cal-cell-info" style="font-size:9px;color:'+col+'">'+nome+': '+nomeOp(p.operaioId).split(' ')[0]+'</div>';
+        }).join('');
+      }).filter(Boolean).join('');
+    },function(dateStr){
+      return rpCantSel.some(function(id){return presenze.find(function(p){return p.cantiereId===id&&p.data===dateStr&&!p.assente;})})?'present':'';
+    });
+}
+
+function rpCalendario(meseStr,infoFn,classFn){
+  var anno=parseInt(meseStr.slice(0,4)),mese=parseInt(meseStr.slice(5,7))-1;
+  var giorni=['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+  var html='<div class="cal-grid">';
+  giorni.forEach(function(g){html+='<div class="cal-header-day">'+g+'</div>';});
+  var primo=new Date(anno,mese,1),ultimo=new Date(anno,mese+1,0);
+  var startDow=(primo.getDay()+6)%7;
+  for(var i=0;i<startDow;i++)html+='<div class="cal-cell empty"></div>';
+  for(var d=1;d<=ultimo.getDate();d++){
+    var dateStr=anno+'-'+String(mese+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var isToday=dateStr===oggi;
+    var fest=isFestivo(dateStr);
+    var extraClass=classFn(dateStr);
+    var cellClass='cal-cell'+(fest.festivo?' festivo':'')+(extraClass?' '+extraClass:'')+(isToday?' today':'');
+    var info=infoFn(dateStr);
+    if(fest.festivo&&!info)info='<div class="cal-festivo-label">'+fest.label+'</div>';
+    html+='<div class="'+cellClass+'"><div class="cal-day-num">'+d+'</div>'+info+'</div>';
+  }
+  html+='</div>';return html;
+}
+
+function initAnniSelect(){initReport();}
+function renderReport(){initReport();}
+function applicaSceltaRapida(){}
+
+
+function initCalendario(){
+  var sel=document.getElementById('cal-operaio');if(!sel)return;
+  var prev=sel.value;
+  sel.innerHTML='<option value="">Tutti gli operai</option>';
+  operai.forEach(function(o){var opt=document.createElement('option');opt.value=o.id;opt.textContent=o.nome;sel.appendChild(opt);});
+  if(prev)sel.value=prev;
+  qrRenderOperai();qrRenderCantieri();qrInitOrari();
+  renderCalendario();
+}
+
+function cambiareMese(delta){
+  calMese+=delta;if(calMese>11){calMese=0;calAnno++;}if(calMese<0){calMese=11;calAnno--;}renderCalendario();
+}
+
+function getEaster(y){
+  var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+      h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+      mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;
+  return y+'-'+String(mo).padStart(2,'0')+'-'+String(da).padStart(2,'0');
+}
+
+function isFestivo(dateStr){
+  var date=new Date(dateStr+'T00:00:00'),dow=date.getDay();
+  if(dow===0||dow===6)return{festivo:true,label:dow===0?'Domenica':'Sabato'};
+  var y=date.getFullYear(),m=date.getMonth()+1,d=date.getDate();
+  var fissi=[y+'-01-01',y+'-01-06',y+'-04-25',y+'-05-01',y+'-06-02',y+'-08-15',y+'-11-01',y+'-12-08',y+'-12-25',y+'-12-26'];
+  var nomi={'01-01':'Capodanno','01-06':'Epifania','04-25':'Liberazione','05-01':'Lavoro','06-02':'Repubblica','08-15':'Ferragosto','11-01':'Ognissanti','12-08':'Immacolata','12-25':'Natale','12-26':'S.Stefano'};
+  var key=String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+  if(fissi.includes(dateStr))return{festivo:true,label:nomi[key]};
+  var easter=getEaster(y),eDate=new Date(easter+'T00:00:00'),lunedi=new Date(eDate);
+  lunedi.setDate(eDate.getDate()+1);
+  if(dateStr===easter)return{festivo:true,label:'Pasqua'};
+  if(dateStr===localDateStr(lunedi))return{festivo:true,label:'Lunedì Pasqua'};
+  return{festivo:false,label:''};
+}
+
+function renderCalendario(){
+  var calOp=document.getElementById('cal-operaio');
+  var calLabel=document.getElementById('cal-mese-label');
+  var calGrid=document.getElementById('calendario-grid');
+  if(!calOp||!calLabel||!calGrid)return;
+  var opId=calOp.value;
+  var mesiIt=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  calLabel.textContent=mesiIt[calMese]+' '+calAnno;
+  var dbgEl=document.getElementById('cal-debug-count');
+  if(dbgEl)dbgEl.textContent=presenze.length===0?'(nessuna presenza registrata)':'('+presenze.length+' presenze in archivio)';
+
+  var giorni=['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+  var html='<div class="cal-grid">';
+  giorni.forEach(function(g){html+='<div class="cal-header-day">'+g+'</div>';});
+  var primoGiorno=new Date(calAnno,calMese,1),ultimoGiorno=new Date(calAnno,calMese+1,0);
+  var startDow=(primoGiorno.getDay()+6)%7;
+  for(var i=0;i<startDow;i++)html+='<div class="cal-cell empty"></div>';
+
+  var calColori=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];
+  function cantColore(cantId){var idx=cantieri.findIndex(function(c){return c.id==cantId;});return calColori[idx%calColori.length]||'#888';}
+
+  for(var d=1;d<=ultimoGiorno.getDate();d++){
+    var dateStr=calAnno+'-'+String(calMese+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var isToday=dateStr===oggi;
+    var pp=presenze.filter(function(p){return p.data===dateStr;});
+    if(opId)pp=pp.filter(function(p){return p.operaioId==opId;});
+    var presenti=pp.filter(function(p){return !p.assente;});
+    var assenti=pp.filter(function(p){return p.assente;});
+    var cellClass='cal-cell';
+    var fest=isFestivo(dateStr);
+    if(fest.festivo)cellClass+=' festivo';
+    if(presenti.length&&!assenti.length)cellClass+=' present';
+    else if(!presenti.length&&assenti.length)cellClass+=' absent';
+    else if(presenti.length&&assenti.length)cellClass+=' present';
+    if(isToday)cellClass+=' today';
+    if(pp.length)cellClass+=' has-data';
+    var infoHtml='';
+    if(fest.festivo)infoHtml+='<div class="cal-festivo-label">'+fest.label+'</div>';
+    if(presenti.length){
+      infoHtml+=presenti.map(function(p){
+        var col=cantColore(p.cantiereId);
+        var nome=nomeOp(p.operaioId).split(' ')[0];
+        return '<div class="cal-cell-info" style="color:'+col+';font-weight:600;font-size:9px">'+nome+'</div>';
+      }).join('');
+    }
+    if(assenti.length){
+      infoHtml+=assenti.map(function(p){
+        var nome=nomeOp(p.operaioId).split(' ')[0];
+        return '<div class="cal-cell-info" style="color:var(--red);font-size:9px;opacity:0.7">'+nome+' · '+(MOTIVAZIONI[p.motivazione]||'Assente')+'</div>';
+      }).join('');
+    }
+    html+='<div class="'+cellClass+'" onclick="apriGiornoPanel(\''+dateStr+'\')" style="cursor:pointer"><div class="cal-day-num">'+d+'</div>'+infoHtml+'</div>';
+  }
+  html+='</div>';
+  calGrid.innerHTML=html;
+
+  // Legenda cantieri colorati
+  var legEl=document.getElementById('cal-legenda-operai');
+  if(legEl){
+    var calColoriLeg=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];
+    legEl.innerHTML=cantieri.map(function(c,i){
+      var col=calColoriLeg[i%calColoriLeg.length];
+      return '<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:'+col+'">'+
+        '<span style="width:10px;height:10px;border-radius:2px;background:'+col+';display:inline-block"></span>'+
+        c.nome+'</span>';
+    }).join('');
+  }
+  var panel=document.getElementById('giorno-riepilogo');
+  if(panel)panel.style.display='none';
+
+  var meseStr=calAnno+'-'+String(calMese+1).padStart(2,'0');
+  var ppMese=presenze.filter(function(p){return p.data.startsWith(meseStr)&&!p.assente;});
+  if(opId)ppMese=ppMese.filter(function(p){return p.operaioId==opId;});
+  var riepilogoEl=document.getElementById('cal-riepilogo-mese');
+  if(!riepilogoEl)return;
+  if(!ppMese.length){riepilogoEl.style.display='none';return;}
+  var giornateMap={},oreMap={};
+  ppMese.forEach(function(p){
+    if(!giornateMap[p.operaioId]){giornateMap[p.operaioId]=new Set();oreMap[p.operaioId]=0;}
+    giornateMap[p.operaioId].add(p.data);oreMap[p.operaioId]+=calcOre(p.entrata,p.uscita);
+  });
+  var righe=Object.keys(giornateMap)
+    .map(function(id){return{op:operai.find(function(o){return o.id==id;}),giorni:giornateMap[id].size,ore:oreMap[id]};})
+    .filter(function(r){return r.op;}).sort(function(a,b){return b.giorni-a.giorni;})
+    .map(function(r){return '<div style="display:flex;justify-content:space-between;gap:16px;padding:4px 0;border-bottom:1px solid var(--border-light)">'+
+      '<span>'+r.op.nome+'</span><span style="white-space:nowrap;font-family:\'DM Mono\',monospace;font-size:12px;color:var(--text2)">'+r.giorni+'gg · '+r.ore+'h</span></div>';}).join('');
+  riepilogoEl.innerHTML='<div style="font-family:\'DM Mono\',monospace;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Riepilogo mese</div>'+righe;
+  riepilogoEl.style.display='block';
+}
+
+var qrOpSel=null, qrCantSel=null, qrDateStr=null, qrMotSel='malattia', qrLastPresId=null;
+
+function qrInitOrari(){
+  var ent=document.getElementById('qr-entrata');
+  var usc=document.getElementById('qr-uscita');
+  if(ent)ent.value=impostazioni.entrata||'08:00';
+  if(usc)usc.value=impostazioni.uscita||'17:00';
+  var el=document.getElementById('qr-orari-op');
+  if(el)el.textContent='— Registra una presenza prima —';
+}
+
+function qrAggiornaOpLabel(){
+  var el=document.getElementById('qr-orari-op');
+  if(!el)return;
+  if(!qrLastPresId){el.textContent='— Registra una presenza prima —';return;}
+  var pres=presenze.find(function(p){return p.id===qrLastPresId;});
+  if(!pres){el.textContent='— Registra una presenza prima —';return;}
+  el.textContent=nomeOp(pres.operaioId)+': '+pres.entrata+' – '+pres.uscita;
+  document.getElementById('qr-entrata').value=pres.entrata;
+  document.getElementById('qr-uscita').value=pres.uscita;
+}
+
+function qrSalvaOrari(){
+  if(!qrLastPresId){toast('Registra prima una presenza!');return;}
+  var ent=document.getElementById('qr-entrata').value;
+  var usc=document.getElementById('qr-uscita').value;
+  if(!ent||!usc){toast('Inserisci entrambi gli orari!');return;}
+  if(ent>=usc){toast('⚠️ L\'uscita deve essere dopo l\'entrata!');return;}
+  var pres=presenze.find(function(p){return p.id===qrLastPresId;});
+  if(!pres){toast('Presenza non trovata!');return;}
+  pres.entrata=ent; pres.uscita=usc;
+  // reset tutto per ricominciare
+  qrLastPresId=null; qrOpSel=null; qrCantSel=null;
+  persist();renderCalendario();qrRenderOperai();qrRenderCantieri();qrRenderRiepilogo();qrInitOrari();
+  toast('✓ Orari aggiornati!');
+}
+
+function qrSelMotiv(mot){
+  qrMotSel=mot;
+  ['malattia','ferie','infortunio','permesso','altro'].forEach(function(m){
+    var b=document.getElementById('qr-mot-'+m);
+    if(b)b.classList.toggle('selected',m===mot);
+  });
+  if(qrOpSel) qrSegnaAssente();
+}
+
+function apriGiornoPanel(dateStr){
+  qrDateStr=dateStr;
+  qrOpSel=null; qrCantSel=null; qrLastPresId=null;
+  // evidenzia cella
+  document.querySelectorAll('.cal-cell.selected').forEach(function(el){el.classList.remove('selected');});
+  var cells=document.querySelectorAll('#calendario-grid .cal-cell');
+  cells.forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf(dateStr)>=0)el.classList.add('selected');});
+  var data=new Date(dateStr+'T00:00:00');
+  var label=data.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('qr-data-label').textContent=label.charAt(0).toUpperCase()+label.slice(1);
+  document.getElementById('qr-data').value=dateStr;
+  qrRenderOperai(); qrRenderCantieri(); qrRenderRiepilogo();
+}
+
+function chiudiGiornoPanel(){
+  document.getElementById('giorno-riepilogo').style.display='none';
+  document.querySelectorAll('.cal-cell.selected').forEach(function(el){el.classList.remove('selected');});
+  qrDateStr=null; qrOpSel=null; qrCantSel=null; qrLastPresId=null;
+  qrRenderOperai(); qrRenderCantieri();
+  document.getElementById('qr-data-label').textContent='— Clicca un giorno —';
+}
+
+function qrRenderOperai(){
+  var el=document.getElementById('qr-operai'); if(!el)return;
+  if(!qrDateStr){el.innerHTML='<div style="font-size:12px;color:var(--text3)">Seleziona un giorno</div>';return;}
+  el.innerHTML=operai.filter(function(o){return(o.stato||'attivo')==='attivo';}).map(function(o){
+    var pres=presenze.find(function(p){return p.operaioId===o.id&&p.data===qrDateStr&&!p.assente;});
+    var ass=presenze.find(function(p){return p.operaioId===o.id&&p.data===qrDateStr&&p.assente;});
+    var cls='qr-chip';
+    var extra='';
+    if(pres){cls+=' done';extra=' ✓';}
+    else if(ass){cls+=' absent';extra=' ✗';}
+    else if(qrOpSel===o.id) cls+=' selected';
+    return '<button class="'+cls+'" onclick="qrSelOp('+o.id+')">'+o.nome+extra+'</button>';
+  }).join('');
+}
+
+function qrRenderCantieri(){
+  var el=document.getElementById('qr-cantieri'); if(!el)return;
+  if(!qrDateStr){el.innerHTML='<div style="font-size:12px;color:var(--text3)">Seleziona un giorno</div>';return;}
+  el.innerHTML=cantieri.map(function(c){
+    var cls='qr-chip'+(qrCantSel===c.id?' selected':'');
+    return '<button class="'+cls+'" onclick="qrSelCant('+c.id+')">'+c.nome+'</button>';
+  }).join('');
+}
+
+function qrRenderRiepilogo(){
+  var el=document.getElementById('giorno-riepilogo');
+  var body=document.getElementById('giorno-riepilogo-body');
+  var title=document.getElementById('giorno-riepilogo-title');
+  if(!el||!body||!title)return;
+  var pp=presenze.filter(function(p){return p.data===qrDateStr;});
+  if(!pp.length){el.style.display='none';return;}
+  el.style.display='block';
+  var data=new Date(qrDateStr+'T00:00:00');
+  title.textContent=''+data.toLocaleDateString('it-IT',{day:'numeric',month:'long'});
+  body.innerHTML='<table><thead><tr><th>Operaio</th><th>Cantiere</th><th>Entrata</th><th>Uscita</th><th>Stato</th><th></th></tr></thead><tbody>'+
+    pp.map(function(p){
+      var editRow='';
+      if(!p.assente){
+        editRow='<tr id="qr-edit-row-'+p.id+'" style="display:none"><td colspan="6" style="padding:6px 0">'+
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
+          '<select id="qr-edit-cant-'+p.id+'" style="flex:1;min-width:100px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:inherit;background:var(--surface2)">'+
+          cantieri.map(function(c){return '<option value="'+c.id+'"'+(c.id===p.cantiereId?' selected':'')+'>'+c.nome+'</option>';}).join('')+
+          '</select>'+
+          '<input type="time" id="qr-edit-ent-'+p.id+'" value="'+p.entrata+'" style="width:90px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:\'DM Mono\',monospace;background:var(--surface2)">'+
+          '<input type="time" id="qr-edit-usc-'+p.id+'" value="'+p.uscita+'" style="width:90px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:\'DM Mono\',monospace;background:var(--surface2)">'+
+          '<button class="btn btn-primary" style="padding:4px 10px;font-size:12px" onclick="qrSalvaModifica('+p.id+')">✓</button>'+
+          '<button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="qrChiudiModifica('+p.id+')">✕</button>'+
+          '</div></td></tr>';
+      }
+      return '<tr>'+
+        '<td><strong>'+nomeOp(p.operaioId)+'</strong></td>'+
+        '<td>'+nomeCant(p.cantiereId)+'</td>'+
+        '<td>'+(p.assente?'—':p.entrata)+'</td>'+
+        '<td>'+(p.assente?'—':p.uscita)+'</td>'+
+        '<td>'+badgeAssenza(p)+'</td>'+
+        '<td style="display:flex;gap:3px">'+
+        (!p.assente?'<button class="btn btn-ghost" style="padding:2px 6px;font-size:11px" onclick="qrApriModifica('+p.id+')">Modifica</button>':'')+
+        '<button class="btn btn-danger" style="padding:2px 6px;font-size:11px" onclick="qrElimina('+p.id+')">✕</button>'+
+        '</td>'+
+      '</tr>'+editRow;
+    }).join('')+'</tbody></table>';
+}
+
+function qrApriModifica(id){
+  var row=document.getElementById('qr-edit-row-'+id);
+  if(row)row.style.display='';
+}
+
+function qrChiudiModifica(id){
+  var row=document.getElementById('qr-edit-row-'+id);
+  if(row)row.style.display='none';
+}
+
+function qrSalvaModifica(id){
+  var pres=presenze.find(function(p){return p.id===id;});
+  if(!pres)return;
+  var cant=document.getElementById('qr-edit-cant-'+id).value;
+  var ent=document.getElementById('qr-edit-ent-'+id).value;
+  var usc=document.getElementById('qr-edit-usc-'+id).value;
+  if(!ent||!usc){toast('Inserisci entrambi gli orari!');return;}
+  if(ent>=usc){toast('⚠️ L\'uscita deve essere dopo l\'entrata!');return;}
+  pres.cantiereId=parseInt(cant); pres.entrata=ent; pres.uscita=usc;
+  persist();renderCalendario();qrRenderOperai();qrRenderRiepilogo();
+  toast('✓ Presenza aggiornata!');
+}
+
+function qrSelOp(id){
+  if(!qrDateStr){toast('Seleziona prima un giorno!');return;}
+  var pres=presenze.find(function(p){return p.operaioId===id&&p.data===qrDateStr;});
+  if(pres&&!qrOpSel){toast('⚠️ '+nomeOp(id)+' è già registrato in questa data!');return;}
+  qrOpSel=(qrOpSel===id)?null:id;
+  qrRenderOperai();
+  qrAggiornaOpLabel();
+  if(qrOpSel&&qrCantSel) qrRegistra();
+}
+
+function qrSelCant(id){
+  if(!qrDateStr){toast('Seleziona prima un giorno!');return;}
+  qrCantSel=(qrCantSel===id)?null:id;
+  qrRenderCantieri();
+  if(qrOpSel&&qrCantSel) qrRegistra();
+}
+
+function qrRegistra(){
+  var ent=impostazioni.entrata||'08:00';
+  var usc=impostazioni.uscita||'17:00';
+  var sov=presenze.filter(function(p){return p.operaioId===qrOpSel&&p.data===qrDateStr&&!p.assente&&orariSovrapposti(ent,usc,p.entrata,p.uscita);});
+  if(sov.length){toast('⚠️ Presenza sovrapposta per '+nomeOp(qrOpSel)+'!');qrOpSel=null;qrRenderOperai();return;}
+  var newId=nextPId++;
+  presenze.push({id:newId,operaioId:qrOpSel,cantiereId:qrCantSel,data:qrDateStr,entrata:ent,uscita:usc,assente:false});
+  qrLastPresId=newId;
+  toast('✓ '+nomeOp(qrOpSel)+' → '+nomeCant(qrCantSel));
+  qrOpSel=null; qrCantSel=null;
+  persist();renderCalendario();qrRenderOperai();qrRenderCantieri();qrRenderRiepilogo();
+  qrAggiornaOpLabel();
+}
+
+function qrSegnaAssente(){
+  if(!qrDateStr){toast('Seleziona prima un giorno!');return;}
+  if(!qrOpSel){toast('Seleziona un operaio!');return;}
+  var mot=qrMotSel||'malattia';
+  var giàReg=presenze.find(function(p){return p.operaioId===qrOpSel&&p.data===qrDateStr;});
+  if(giàReg){toast('⚠️ '+nomeOp(qrOpSel)+' è già registrato in questa data!');return;}
+  presenze.push({id:nextPId++,operaioId:qrOpSel,cantiereId:0,data:qrDateStr,entrata:'',uscita:'',assente:true,motivazione:mot});
+  toast('✓ Assenza '+nomeOp(qrOpSel)+' registrata!');
+  qrOpSel=null; qrCantSel=null;
+  persist();renderCalendario();qrRenderOperai();qrRenderCantieri();qrRenderRiepilogo();
+}
+
+function qrElimina(id){
+  apriConferma('Eliminare questa presenza?',function(){
+    presenze=presenze.filter(function(p){return p.id!==id;});
+    persist();renderCalendario();qrRenderOperai();qrRenderRiepilogo();
+  });
+}
+
+function esportaExcel(){
+  var wb=XLSX.utils.book_new();
+  var presData=presenze.map(function(p){return{ID:p.id,Operaio:nomeOp(p.operaioId),Cantiere:nomeCant(p.cantiereId),Data:p.data,Entrata:p.entrata,Uscita:p.uscita,Ore:p.assente?0:calcOre(p.entrata,p.uscita),Stato:p.assente?'Assente':'Presente',Motivazione:p.assente?(p.motivazione||''):''}});
+  var opData=operai.map(function(o){return{ID:o.id,Nome:o.nome,Ruolo:o.ruolo,Telefono:o.tel,Stato:o.stato};});
+  var cData=cantieri.map(function(c){return{ID:c.id,Nome:c.nome,Indirizzo:c.indirizzo,Responsabile:c.resp};});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(presData),'Presenze');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(opData),'Operai');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(cData),'Cantieri');
+  XLSX.writeFile(wb,'presenze_cantiere_'+oggi+'.xlsx');
+  toast('Excel esportato!');
+}
+
+function importaExcel(event){
+  var file=event.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'binary'});
+      var ps=wb.Sheets['Presenze'],os=wb.Sheets['Operai'],cs=wb.Sheets['Cantieri'];
+      if(!ps||!os||!cs){toast('File non valido: mancano fogli.');return;}
+      var rawOp=XLSX.utils.sheet_to_json(os);
+      var rawCant=XLSX.utils.sheet_to_json(cs);
+      var rawPres=XLSX.utils.sheet_to_json(ps);
+      var nuoviOp=rawOp.map(function(r){return{id:parseInt(r.ID)||0,nome:String(r.Nome||''),ruolo:String(r.Ruolo||'—'),tel:String(r.Telefono||''),stato:String(r.Stato||'attivo')};}).filter(function(o){return o.id&&o.nome;});
+      var nuoviCant=rawCant.map(function(r){return{id:parseInt(r.ID)||0,nome:String(r.Nome||''),indirizzo:String(r.Indirizzo||'—'),resp:String(r.Responsabile||'')};}).filter(function(c){return c.id&&c.nome;});
+      var nuoviPres=rawPres.map(function(r){
+        var opTr=nuoviOp.find(function(o){return o.nome===String(r.Operaio||'');});
+        var caTr=nuoviCant.find(function(c){return c.nome===String(r.Cantiere||'');});
+        return{id:parseInt(r.ID)||0,operaioId:opTr?opTr.id:0,cantiereId:caTr?caTr.id:0,data:String(r.Data||''),entrata:String(r.Entrata||''),uscita:String(r.Uscita||''),assente:String(r.Stato||'')==='Assente'};
+      }).filter(function(p){return p.id&&p.operaioId&&p.cantiereId&&p.data;});
+      apriConferma('Importare '+nuoviOp.length+' operai, '+nuoviCant.length+' cantieri e '+nuoviPres.length+' presenze? I dati attuali verranno sostituiti.',function(){
+        operai=nuoviOp;cantieri=nuoviCant;presenze=nuoviPres;
+        nextOpId=nuoviOp.length+1;nextCId=nuoviCant.length+1;nextPId=nuoviPres.length+1;
+        persist();populateSelects();refreshTutto();
+        toast('Importati '+nuoviOp.length+' operai, '+nuoviCant.length+' cantieri, '+nuoviPres.length+' presenze!');
+      });
+    }catch(err){toast('Errore nel file Excel: '+err.message);}
+  };
+  reader.readAsBinaryString(file);
+  event.target.value='';
+}
+
+(function init(){
+  try{
+    var pd=document.getElementById('p-data');
+    var fd=document.getElementById('f-data');
+    var tl=document.getElementById('today-label');
+    var pe=document.getElementById('p-entrata');
+    var pu=document.getElementById('p-uscita');
+    if(pd)pd.value=oggi;
+    if(fd)fd.value=oggi;
+    if(tl)tl.textContent=new Date().toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+    if(pe)pe.value=impostazioni.entrata||'08:00';
+    if(pu)pu.value=impostazioni.uscita||'17:00';
+    populateSelects();initCalendario();initAnniSelect();
+    if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+  }catch(e){console.error('INIT ERROR:',e.message,e.stack);}
+})();
+
+// ── REPORT ATTIVITÀ (tab indipendente) ───────────────────
+var raAnno=new Date().getFullYear(), raMese=new Date().getMonth()+1, raCantSel=[];
+
+function initReportAtt(){
+  var el=document.getElementById('ra-label');
+  if(el)el.textContent=mesiIt[raMese-1]+' '+raAnno;
+  raRenderCantieri();raRenderTabella();
+}
+
+function raChangeMese(delta){
+  raMese+=delta;
+  if(raMese>12){raMese=1;raAnno++;}
+  if(raMese<1){raMese=12;raAnno--;}
+  var el=document.getElementById('ra-label');
+  if(el)el.textContent=mesiIt[raMese-1]+' '+raAnno;
+  raRenderTabella();
+}
+
+function raRenderCantieri(){
+  var el=document.getElementById('ra-cantieri');if(!el)return;
+  el.innerHTML=cantieri.map(function(c){
+    var sel=raCantSel.indexOf(c.id)>=0;
+    return '<button class="qr-chip'+(sel?' selected':'')+'" onclick="raToggleCant('+c.id+')">'+c.nome+'</button>';
+  }).join('');
+}
+
+function raToggleCant(id){
+  var idx=raCantSel.indexOf(id);
+  if(idx>=0)raCantSel.splice(idx,1);else raCantSel.push(id);
+  raRenderCantieri();raRenderTabella();
+}
+
+function raRenderTabella(){
+  var el=document.getElementById('ra-tabella');if(!el)return;
+  raRenderCalendario();
+  if(!raCantSel.length){
+    el.innerHTML='<div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un cantiere</div>';
+    return;
+  }
+  var colori=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];
+  var meseStr=raAnno+'-'+String(raMese).padStart(2,'0');
+  var html='';
+  raCantSel.forEach(function(cantId,ci){
+    var c=cantieri.find(function(x){return x.id===cantId;});if(!c)return;
+    var col=colori[ci%colori.length];
+    var attMese=(attivitaData||[]).filter(function(a){return a.cantiereId===cantId&&a.data.startsWith(meseStr);});
+    attMese.sort(function(a,b){return a.data.localeCompare(b.data);});
+    html+='<div style="margin-bottom:'+(ci<raCantSel.length-1?'1.5rem':'0')+'">'+
+      '<div class="card-header" style="margin-bottom:1rem;border-left:3px solid '+col+';padding-left:10px">'+
+        '<span class="card-title" style="color:'+col+'">'+c.nome+' — '+mesiIt[raMese-1]+' '+raAnno+'</span>'+
+        '<span style="font-family:\'DM Mono\',monospace;font-size:12px;color:var(--text2)">'+attMese.length+' giorni</span>'+
+      '</div>';
+    if(!attMese.length){
+      html+='<div class="empty" style="margin-bottom:0.5rem">Nessuna attività registrata.</div>';
+    } else {
+      html+='<table><thead><tr><th style="width:100px">Data</th><th>Attività</th><th>Note</th><th>Operai presenti</th><th></th></tr></thead><tbody>';
+      attMese.forEach(function(a){
+        var data=new Date(a.data+'T00:00:00');
+        var label=data.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
+        var opPresenti=presenze.filter(function(p){return p.cantiereId===cantId&&p.data===a.data&&!p.assente;});
+        var opNomi=opPresenti.length?opPresenti.map(function(p){return nomeOp(p.operaioId);}).join(', '):'—';
+        var catTesto=a.categorie&&a.categorie.length?a.categorie.join(', '):'—';
+        html+='<tr id="ra-row-'+a.id+'">'+
+          '<td style="font-family:\'DM Mono\',monospace;font-size:12px;white-space:nowrap"><strong>'+label+'</strong></td>'+
+          '<td style="font-size:13px">'+catTesto+'</td>'+
+          '<td style="font-size:13px;color:var(--text2)">'+(a.note||'—')+'</td>'+
+          '<td style="font-size:12px;color:var(--text2)">'+opNomi+'</td>'+
+          '<td><button class="btn btn-ghost" style="padding:2px 8px;font-size:11px" onclick="raApriModifica('+a.id+')">Modifica</button></td>'+
+        '</tr>'+
+        '<tr id="ra-edit-'+a.id+'" style="display:none"><td colspan="5" style="padding:8px 0">'+
+          '<div style="display:flex;flex-direction:column;gap:8px;padding:8px;background:var(--surface2);border-radius:var(--radius-sm)">'+
+            '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Categorie</div>'+
+            '<div style="display:flex;flex-wrap:wrap;gap:6px" id="ra-edit-cat-'+a.id+'">'+
+              (attCategorie||CAT_DEFAULT).map(function(cat){
+                var sel=a.categorie&&a.categorie.indexOf(cat)>=0;
+                return '<button class="qr-chip'+(sel?' selected':'')+'" onclick="this.classList.toggle(\'selected\')" style="margin:0">'+cat+'</button>';
+              }).join('')+
+            '</div>'+
+            '<textarea id="ra-edit-note-'+a.id+'" style="width:100%;min-height:60px;padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--surface);resize:vertical;box-sizing:border-box">'+(a.note||'')+'</textarea>'+
+            '<div style="display:flex;gap:6px">'+
+              '<button class="btn btn-primary" style="font-size:12px;padding:5px 12px" onclick="raSalvaModifica('+a.id+')">✓ Salva</button>'+
+              '<button class="btn btn-ghost" style="font-size:12px;padding:5px 12px" onclick="raChiudiModifica('+a.id+')">Annulla</button>'+
+            '</div>'+
+          '</div>'+
+        '</td></tr>';
+      });
+      html+='</tbody></table>';
+    }
+    html+='</div>';
+    if(ci<raCantSel.length-1)html+='<hr style="border:none;border-top:1px solid var(--border);margin:0.5rem 0 1.5rem">';
+  });
+  el.innerHTML=html;
+}
+
+function raRenderCalendario(){
+  var el=document.getElementById('ra-calendario');if(!el)return;
+  if(!raCantSel.length){el.innerHTML='<div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un cantiere</div>';return;}
+  var colori=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];
+  var giorni=['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+  var html='<div class="cal-grid">';
+  giorni.forEach(function(g){html+='<div class="cal-header-day">'+g+'</div>';});
+  var primo=new Date(raAnno,raMese-1,1),ultimo=new Date(raAnno,raMese,0);
+  var startDow=(primo.getDay()+6)%7;
+  for(var i=0;i<startDow;i++)html+='<div class="cal-cell empty"></div>';
+  for(var d=1;d<=ultimo.getDate();d++){
+    var dateStr=raAnno+'-'+String(raMese).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var isToday=dateStr===oggi;
+    var fest=isFestivo(dateStr);
+    var haAtt=raCantSel.some(function(id){return(attivitaData||[]).find(function(a){return a.cantiereId===id&&a.data===dateStr;});});
+    var cellClass='cal-cell'+(fest.festivo?' festivo':'')+(isToday?' today':'')+(haAtt?' present':'');
+    var info='';
+    if(fest.festivo)info+='<div class="cal-festivo-label">'+fest.label+'</div>';
+    raCantSel.forEach(function(cantId,ci){
+      var att=(attivitaData||[]).find(function(a){return a.cantiereId===cantId&&a.data===dateStr;});
+      if(!att)return;
+      var col=colori[ci%colori.length];
+      var c=cantieri.find(function(x){return x.id===cantId;});
+      var nomeCant=c?c.nome.split(' ')[0]:'';
+      if(att.categorie&&att.categorie.length)
+        info+='<div class="cal-cell-info" style="font-size:9px;font-weight:600;color:'+col+'">'+nomeCant+': '+att.categorie[0]+'</div>';
+    });
+    html+='<div class="'+cellClass+'"><div class="cal-day-num">'+d+'</div>'+info+'</div>';
+  }
+  html+='</div>';
+  // Legenda
+  if(raCantSel.length>1){
+    html+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:0.75rem">';
+    raCantSel.forEach(function(id,i){
+      var c=cantieri.find(function(x){return x.id===id;});if(!c)return;
+      var col=colori[i%colori.length];
+      html+='<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:'+col+'"><span style="width:10px;height:10px;border-radius:2px;background:'+col+';display:inline-block"></span>'+c.nome+'</span>';
+    });
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
+function raApriModifica(id){
+  document.getElementById('ra-edit-'+id).style.display='';
+}
+function raChiudiModifica(id){
+  document.getElementById('ra-edit-'+id).style.display='none';
+}
+function raSalvaModifica(id){
+  var att=attivitaData.find(function(a){return a.id===id;});if(!att)return;
+  var catBtns=document.querySelectorAll('#ra-edit-cat-'+id+' .qr-chip.selected');
+  att.categorie=Array.from(catBtns).map(function(b){return b.textContent;});
+  att.note=document.getElementById('ra-edit-note-'+id).value.trim();
+  save('op_attivita',attivitaData);
+  raRenderTabella();
+  toast('Attività aggiornata!');
+}
+
+
+var CAT_DEFAULT=['Scavo','Fondazioni','Muratura','Cemento armato','Copertura','Impianti','Intonaco','Pavimentazione','Finiture','Demolizione'];
+var attCategorie=load('op_att_categorie',CAT_DEFAULT);
+var attivitaData=load('op_attivita',[]); // {id, cantiereId, data, categorie:[], note}
+var nextAttId=load('op_nattid',1);
+var attCantSel=null, attAnno=new Date().getFullYear(), attMese=new Date().getMonth()+1;
+
+function initAttivita(){
+  attCategorie=load('op_att_categorie',CAT_DEFAULT);
+  var tabs=document.getElementById('att-subtabs');
+  if(!tabs)return;
+  if(!cantieri.length){
+    tabs.innerHTML='';
+    document.getElementById('att-content').innerHTML='<div class="empty" style="padding:2rem;text-align:center;color:var(--text3)">Nessun cantiere disponibile</div>';
+    return;
+  }
+  if(!attCantSel||!cantieri.find(function(c){return c.id===attCantSel;}))attCantSel=cantieri[0].id;
+  tabs.innerHTML=cantieri.map(function(c){
+    return '<button onclick="attSelCant('+c.id+')" id="att-tab-'+c.id+'" style="flex:1;min-width:100px;padding:10px;border:none;font-family:\'Syne\',sans-serif;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase;transition:all 0.15s;background:'+(c.id===attCantSel?'var(--accent)':'transparent')+';color:'+(c.id===attCantSel?'#fff':'var(--text2)')+'">'+c.nome+'</button>';
+  }).join('');
+  attRenderCalendario();
+}
+
+function attSelCant(id){
+  attCantSel=id;
+  cantieri.forEach(function(c){
+    var b=document.getElementById('att-tab-'+c.id);
+    if(b){b.style.background=c.id===id?'var(--accent)':'transparent';b.style.color=c.id===id?'#fff':'var(--text2)';}
+  });
+  attRenderCalendario();
+}
+
+function attRenderCalendario(){
+  var el=document.getElementById('att-content');if(!el)return;
+  var mesiIt=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  var html='<div class="card">';
+  // Navigazione mese
+  html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">'+
+    '<button class="btn btn-secondary" style="padding:6px 12px" onclick="attCambiaMese(-1)">&#8592;</button>'+
+    '<span style="font-size:16px;font-weight:700;flex:1;text-align:center">'+mesiIt[attMese-1]+' '+attAnno+'</span>'+
+    '<button class="btn btn-secondary" style="padding:6px 12px" onclick="attCambiaMese(1)">&#8594;</button>'+
+  '</div>';
+  // Griglia calendario
+  var giorni=['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+  html+='<div class="cal-grid">';
+  giorni.forEach(function(g){html+='<div class="cal-header-day">'+g+'</div>';});
+  var meseStr=attAnno+'-'+String(attMese).padStart(2,'0');
+  var primo=new Date(attAnno,attMese-1,1),ultimo=new Date(attAnno,attMese,0);
+  var startDow=(primo.getDay()+6)%7;
+  for(var i=0;i<startDow;i++)html+='<div class="cal-cell empty"></div>';
+  for(var d=1;d<=ultimo.getDate();d++){
+    var dateStr=attAnno+'-'+String(attMese).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var isToday=dateStr===oggi;
+    var att=attivitaData.find(function(a){return a.cantiereId===attCantSel&&a.data===dateStr;});
+    var fest=isFestivo(dateStr);
+    var cellClass='cal-cell'+(fest.festivo?' festivo':'')+(isToday?' today':'')+(att?' has-data':'');
+    var info='';
+    if(fest.festivo)info+='<div class="cal-festivo-label">'+fest.label+'</div>';
+    if(att){
+      if(att.categorie&&att.categorie.length)
+        info+='<div class="cal-cell-info" style="font-size:9px;font-weight:600;color:var(--accent)">'+att.categorie.slice(0,2).join(', ')+(att.categorie.length>2?' +'+( att.categorie.length-2):'')+'</div>';
+      if(att.note)
+        info+='<div class="cal-cell-info" style="font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+att.note.substring(0,20)+'</div>';
+    }
+    html+='<div class="'+cellClass+'" onclick="attApriModal(\''+dateStr+'\')" style="cursor:pointer;'+(att?'background:var(--surface2);border-color:var(--accent)':'')+' "><div class="cal-day-num">'+d+'</div>'+info+'</div>';
+  }
+  html+='</div></div>';
+  el.innerHTML=html;
+}
+
+function attCambiaMese(delta){
+  attMese+=delta;
+  if(attMese>12){attMese=1;attAnno++;}
+  if(attMese<1){attMese=12;attAnno--;}
+  attRenderCalendario();
+}
+
+function attApriModal(dateStr){
+  var modal=document.getElementById('att-modal');
+  var data=new Date(dateStr+'T00:00:00');
+  var label=data.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('att-modal-title').textContent=label.charAt(0).toUpperCase()+label.slice(1);
+  document.getElementById('att-modal-cant').value=attCantSel;
+  document.getElementById('att-modal-data').value=dateStr;
+  // Categorie
+  var att=attivitaData.find(function(a){return a.cantiereId===attCantSel&&a.data===dateStr;});
+  var selCat=att?att.categorie:[];
+  document.getElementById('att-modal-categorie').innerHTML=attCategorie.map(function(cat){
+    var sel=selCat.indexOf(cat)>=0;
+    return '<button class="qr-chip'+(sel?' selected':'')+'" onclick="attToggleCat(this,\''+cat.replace(/'/g,"\\'")+'\')" style="margin-bottom:0">'+cat+'</button>';
+  }).join('');
+  document.getElementById('att-modal-note').value=att?att.note||'':'';
+  document.getElementById('att-modal-elimina').style.display=att?'':'none';
+  modal.style.display='flex';
+}
+
+function attToggleCat(btn,cat){
+  btn.classList.toggle('selected');
+}
+
+function attChiudiModal(){
+  document.getElementById('att-modal').style.display='none';
+}
+
+function attSalvaGiorno(){
+  var cantId=parseInt(document.getElementById('att-modal-cant').value);
+  var dateStr=document.getElementById('att-modal-data').value;
+  var note=document.getElementById('att-modal-note').value.trim();
+  var selBtns=document.querySelectorAll('#att-modal-categorie .qr-chip.selected');
+  var categorie=Array.from(selBtns).map(function(b){return b.textContent;});
+  if(!categorie.length&&!note){toast('Seleziona almeno una categoria o aggiungi una nota!');return;}
+  var idx=attivitaData.findIndex(function(a){return a.cantiereId===cantId&&a.data===dateStr;});
+  if(idx>=0){
+    attivitaData[idx].categorie=categorie;
+    attivitaData[idx].note=note;
+  } else {
+    attivitaData.push({id:nextAttId++,cantiereId:cantId,data:dateStr,categorie:categorie,note:note});
+    save('op_nattid',nextAttId);
+  }
+  save('op_attivita',attivitaData);
+  attChiudiModal();
+  attRenderCalendario();
+  toast('Attività salvata!');
+}
+
+function attEliminaGiorno(){
+  var cantId=parseInt(document.getElementById('att-modal-cant').value);
+  var dateStr=document.getElementById('att-modal-data').value;
+  attivitaData=attivitaData.filter(function(a){return!(a.cantiereId===cantId&&a.data===dateStr);});
+  save('op_attivita',attivitaData);
+  attChiudiModal();
+  attRenderCalendario();
+  toast('Attività eliminata.');
+}
+
+// Gestione categorie nelle impostazioni
+function impRenderCategorie(){
+  var el=document.getElementById('imp-categorie-lista');if(!el)return;
+  attCategorie=load('op_att_categorie',CAT_DEFAULT);
+  el.innerHTML=attCategorie.map(function(cat,i){
+    return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;font-size:12px">'+
+      cat+
+      '<button onclick="impRimuoviCategoria('+i+')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 2px;line-height:1">×</button>'+
+    '</span>';
+  }).join('');
+}
+
+function impAggiungiCategoria(){
+  var input=document.getElementById('imp-cat-nuova');
+  var val=input.value.trim();
+  if(!val){toast('Inserisci il nome della categoria!');return;}
+  if(attCategorie.indexOf(val)>=0){toast('Categoria già presente!');return;}
+  attCategorie.push(val);
+  save('op_att_categorie',attCategorie);
+  input.value='';
+  impRenderCategorie();
+  toast('Categoria aggiunta!');
+}
+
+function impRimuoviCategoria(i){
+  attCategorie.splice(i,1);
+  save('op_att_categorie',attCategorie);
+  impRenderCategorie();
+}
+
+</script>
+</body>
+</html>
