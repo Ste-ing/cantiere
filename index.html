@@ -1315,7 +1315,7 @@ function renderCalendario(){
   riepilogoEl.style.display='block';
 }
 
-var qrOpSel=[], qrCantSel=null, qrDateStr=null, qrMotSel='malattia', qrLastPresId=null;
+var qrOpSel=[], qrCantSel=null, qrDateStr=null, qrMotSel='malattia', qrLastPresId=[];
 
 function qrInitOrari(){
   var ent=document.getElementById('qr-entrata');
@@ -1329,8 +1329,8 @@ function qrInitOrari(){
 function qrAggiornaOpLabel(){
   var el=document.getElementById('qr-orari-op');
   if(!el)return;
-  if(!qrLastPresId){el.textContent='— Registra una presenza prima —';return;}
-  var pres=presenze.find(function(p){return p.id===qrLastPresId;});
+  if(!qrLastPresId.length){el.textContent='— Registra una presenza prima —';return;}
+  var pres=presenze.find(function(p){return p.id===qrLastPresId[0];});
   if(!pres){el.textContent='— Registra una presenza prima —';return;}
   el.textContent=nomeOp(pres.operaioId)+': '+pres.entrata+' – '+pres.uscita;
   document.getElementById('qr-entrata').value=pres.entrata;
@@ -1338,16 +1338,16 @@ function qrAggiornaOpLabel(){
 }
 
 function qrSalvaOrari(){
-  if(!qrLastPresId){toast('Registra prima una presenza!');return;}
+  if(!qrLastPresId.length){toast('Registra prima una presenza!');return;}
   var ent=document.getElementById('qr-entrata').value;
   var usc=document.getElementById('qr-uscita').value;
   if(!ent||!usc){toast('Inserisci entrambi gli orari!');return;}
   if(ent>=usc){toast('⚠️ L\'uscita deve essere dopo l\'entrata!');return;}
-  var pres=presenze.find(function(p){return p.id===qrLastPresId;});
-  if(!pres){toast('Presenza non trovata!');return;}
-  pres.entrata=ent; pres.uscita=usc;
-  // reset tutto per ricominciare
-  qrLastPresId=null; qrOpSel=[]; qrCantSel=null;
+  qrLastPresId.forEach(function(presId){
+    var pres=presenze.find(function(p){return p.id===presId;});
+    if(pres){pres.entrata=ent; pres.uscita=usc;}
+  });
+  qrLastPresId=[]; qrOpSel=[]; qrCantSel=null;
   persist();renderCalendario();qrRenderOperai();qrRenderCantieri();qrRenderRiepilogo();qrInitOrari();
   toast('✓ Orari aggiornati!');
 }
@@ -1363,7 +1363,7 @@ function qrSelMotiv(mot){
 
 function apriGiornoPanel(dateStr){
   qrDateStr=dateStr;
-  qrOpSel=[]; qrCantSel=null; qrLastPresId=null;
+  qrOpSel=[]; qrCantSel=null; qrLastPresId=[];
   // evidenzia cella
   document.querySelectorAll('.cal-cell.selected').forEach(function(el){el.classList.remove('selected');});
   var cells=document.querySelectorAll('#calendario-grid .cal-cell');
@@ -1378,7 +1378,7 @@ function apriGiornoPanel(dateStr){
 function chiudiGiornoPanel(){
   document.getElementById('giorno-riepilogo').style.display='none';
   document.querySelectorAll('.cal-cell.selected').forEach(function(el){el.classList.remove('selected');});
-  qrDateStr=null; qrOpSel=[]; qrCantSel=null; qrLastPresId=null;
+  qrDateStr=null; qrOpSel=[]; qrCantSel=null; qrLastPresId=[];
   qrRenderOperai(); qrRenderCantieri();
   document.getElementById('qr-data-label').textContent='— Clicca un giorno —';
 }
@@ -1570,7 +1570,7 @@ function qrRegistra(){
     if(sov.length){toast('⚠️ Presenza sovrapposta per '+nomeOp(opId)+'!');return;}
     var newId=nextPId++;
     presenze.push({id:newId,operaioId:opId,cantiereId:qrCantSel,data:qrDateStr,entrata:ent,uscita:usc,assente:false});
-    qrLastPresId=newId;
+    qrLastPresId.push(newId);
     registrati.push(nomeOp(opId));
   });
   if(registrati.length>0) toast('✓ '+registrati.join(', ')+' → '+nomeCant(qrCantSel));
@@ -2101,10 +2101,29 @@ function voceParsa(testo){
     }
   }
 
-  // --- Riconosci orari (es. "8-12", "9-13", "8:00-12:00", "dalle 8 alle 12") ---
+  // --- Normalizza numeri in lettere per gli orari ---
+  var NUM_ORARI={'uno':1,'due':2,'tre':3,'quattro':4,'cinque':5,'sei':6,'sette':7,'otto':8,
+    'nove':9,'dieci':10,'undici':11,'dodici':12,'tredici':13,'quattordici':14,'quindici':15,
+    'sedici':16,'diciassette':17,'diciotto':18,'diciannove':19,'venti':20,'ventuno':21,
+    'ventidue':22,'ventitre':23};
+  var testoNorm=testo;
+  Object.keys(NUM_ORARI).forEach(function(k){
+    testoNorm=testoNorm.replace(new RegExp('\\b'+k+'\\b','g'),String(NUM_ORARI[k]));
+  });
+
+  // --- Riconosci orari (es. "8-12", "otto 12", "dalle 8 alle 12") ---
   var orarioEntrata=null, orarioUscita=null;
-  var orarioMatch=testo.match(/(\d{1,2})(?::(\d{2}))?\s*[-a]\s*(\d{1,2})(?::(\d{2}))?/);
-  if(!orarioMatch) orarioMatch=testo.match(/dalle\s+(\d{1,2})(?::(\d{2}))?\s+alle\s+(\d{1,2})(?::(\d{2}))?/);
+  var orarioMatch=testoNorm.match(/(\d{1,2})(?::(\d{2}))?\s*[-]\s*(\d{1,2})(?::(\d{2}))?/);
+  if(!orarioMatch) orarioMatch=testoNorm.match(/dalle?\s+(\d{1,2})(?::(\d{2}))?\s+alle?\s+(\d{1,2})(?::(\d{2}))?/);
+  if(!orarioMatch){
+    // cerca due numeri consecutivi che sembrano orari (es. "8 12" o "otto dodici")
+    var mOrari=testoNorm.match(/(\d{1,2})\s+(\d{1,2})/g);
+    if(mOrari){
+      var parts=mOrari[mOrari.length-1].split(/\s+/);
+      var h1=parseInt(parts[0]),h2=parseInt(parts[1]);
+      if(h1>=0&&h1<=23&&h2>=0&&h2<=23&&h2>h1) orarioMatch=[null,parts[0],null,parts[1],null];
+    }
+  }
   if(orarioMatch){
     var hEnt=parseInt(orarioMatch[1]), mEnt=parseInt(orarioMatch[2]||'0');
     var hUsc=parseInt(orarioMatch[3]), mUsc=parseInt(orarioMatch[4]||'0');
