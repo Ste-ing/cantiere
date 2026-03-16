@@ -640,7 +640,18 @@ function cloudLoad(){
         if(d.operai)operai=d.operai;
         if(d.cantieri)cantieri=d.cantieri;
         if(d.presenze)presenze=d.presenze;
-        if(d.attivita)attivitaData=d.attivita;
+        if(d.attivita){
+          // Pulisci attività orfane (cantiereId non esistente)
+          var cantIds=(d.cantieri||[]).map(function(c){return c.id;});
+          var opIds=(d.operai||[]).map(function(o){return o.id;});
+          attivitaData=d.attivita.filter(function(a){return cantIds.indexOf(a.cantiereId)>=0;});
+          // Pulisci presenze orfane (operaioId o cantiereId non esistente)
+          if(d.presenze){
+            presenze=d.presenze.filter(function(p){
+              return opIds.indexOf(p.operaioId)>=0&&(p.assente||cantIds.indexOf(p.cantiereId)>=0||p.cantiereId===0);
+            });
+          }
+        }
         if(d.attCategorie&&d.attCategorie.length)attCategorie=d.attCategorie;
         if(d.impostazioni)impostazioni=d.impostazioni;
         if(d.contatori){nextOpId=d.contatori.noid||nextOpId;nextCId=d.contatori.ncid||nextCId;nextPId=d.contatori.npid||nextPId;nextAttId=d.contatori.nattid||nextAttId;}
