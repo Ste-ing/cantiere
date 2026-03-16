@@ -197,6 +197,8 @@ tbody tr:hover td{background:var(--surface2);}
           </div>
         </div>
         <div id="cal-debug-count" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:8px;text-align:right"></div>
+        <div id="debug-panel" style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px;margin-bottom:8px;font-family:'DM Mono',monospace;font-size:10px;display:none"></div>
+        <button onclick="mostraDebug()" style="font-size:10px;padding:2px 8px;margin-bottom:8px;border:1px solid #ccc;border-radius:4px;background:#f5f5f5;cursor:pointer">Debug</button>
         <div id="calendario-grid"></div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:1rem">
           <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:12px;height:12px;border-radius:3px;background:var(--green-bg);border:1px solid var(--green-border);display:inline-block"></span>Presente</span>
@@ -1058,6 +1060,19 @@ function initAnniSelect(){initReport();}
 function renderReport(){initReport();}
 function applicaSceltaRapida(){}
 
+
+function mostraDebug(){
+  var dp=document.getElementById("debug-panel");
+  if(!dp)return;
+  var presenzeLS=load("op_presenze",[]);
+  var oggi2=localDateStr();
+  var lines=["oggi: "+oggi2,"presenze in memoria: "+presenze.length,"presenze in localStorage: "+presenzeLS.length,"--- ultime 3 (memoria) ---"];
+  presenze.slice(-3).forEach(function(p){lines.push("id:"+p.id+" data:"+p.data+" op:"+p.operaioId+" cant:"+p.cantiereId+" assente:"+p.assente);});
+  lines.push("--- ultime 3 (localStorage) ---");
+  presenzeLS.slice(-3).forEach(function(p){lines.push("id:"+p.id+" data:"+p.data+" op:"+p.operaioId+" cant:"+p.cantiereId+" assente:"+p.assente);});
+  dp.style.display="block";
+  dp.innerHTML=lines.join("<br>");
+}
 
 function initCalendario(){
   var sel=document.getElementById('cal-operaio');if(!sel)return;
