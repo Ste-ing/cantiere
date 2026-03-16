@@ -471,6 +471,25 @@ tbody tr:hover td{background:var(--surface2);}
         </div>
         <input type="hidden" id="att-modal-cant">
         <input type="hidden" id="att-modal-data">
+        <!-- Cantiere chiuso -->
+        <div style="margin-bottom:1rem;padding:10px;background:var(--red-bg);border:1px solid var(--red-border);border-radius:var(--radius-sm)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--red)">Cantiere chiuso</span>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="att-modal-chiuso" onchange="attToggleChiuso()" style="width:16px;height:16px;cursor:pointer">
+              <span style="font-size:12px;color:var(--text2)">Segna come chiuso</span>
+            </label>
+          </div>
+          <div id="att-modal-chiuso-motiv-wrap" style="display:none">
+            <select id="att-modal-chiuso-motiv" style="width:100%;padding:6px 8px;border:1px solid var(--red-border);border-radius:var(--radius-sm);font-size:12px;font-family:inherit;background:var(--surface);color:var(--text)">
+              <option value="maltempo">Maltempo</option>
+              <option value="attesa_materiali">Attesa materiali</option>
+              <option value="festivita">Festività</option>
+              <option value="fermo_tecnico">Fermo tecnico</option>
+              <option value="altro">Altro</option>
+            </select>
+          </div>
+        </div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Categorie</div>
         <div id="att-modal-categorie" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem"></div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:6px">Note</div>
@@ -480,6 +499,26 @@ tbody tr:hover td{background:var(--surface2);}
           <button class="btn btn-ghost" onclick="attChiudiModal()">Annulla</button>
           <button class="btn btn-danger" id="att-modal-elimina" style="display:none" onclick="attEliminaGiorno()">Elimina</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal chiusura cantiere -->
+  <div id="qr-chiusura-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:90%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.18)">
+      <div style="font-size:15px;font-weight:700;margin-bottom:1rem">Chiudi cantiere</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:1rem">Cantiere <span id="qr-chiusura-nome" style="font-weight:600;color:var(--text)"></span></p>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:6px">Motivazione</div>
+      <select id="qr-chiusura-motiv" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--surface2);margin-bottom:1.25rem">
+        <option value="maltempo">Maltempo</option>
+        <option value="attesa_materiali">Attesa materiali</option>
+        <option value="festivita">Festività</option>
+        <option value="fermo_tecnico">Fermo tecnico</option>
+        <option value="altro">Altro</option>
+      </select>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-danger" style="flex:1" onclick="qrConfermaChiusura()">Chiudi cantiere</button>
+        <button class="btn btn-ghost" style="flex:1" onclick="qrAnnullaChiusura()">Annulla</button>
       </div>
     </div>
   </div>
@@ -1117,7 +1156,14 @@ function rpCalendario(meseStr,infoFn,classFn){
     var cellClass='cal-cell'+(fest.festivo?' festivo':'')+(extraClass?' '+extraClass:'')+(isToday?' today':'');
     var info=infoFn(dateStr);
     if(fest.festivo&&!info)info='<div class="cal-festivo-label">'+fest.label+'</div>';
-    html+='<div class="'+cellClass+'"><div class="cal-day-num">'+d+'</div>'+info+'</div>';
+    // Evidenzia cella se un cantiere selezionato è chiuso quel giorno
+    var MOTIV_LABEL_RP={'maltempo':'Maltempo','attesa_materiali':'Attesa mat.','festivita':'Festivita','fermo_tecnico':'Fermo tec.','altro':'Chiuso'};
+    var _rpChiusoAtt=rpCantSel.map(function(id){return(attivitaData||[]).find(function(a){return a.cantiereId===id&&a.data===dateStr&&a.chiuso;});}).filter(Boolean);
+    var _rpChiuso=_rpChiusoAtt.length>0;
+    var _rpStyle=_rpChiuso?'background:var(--red-bg);border-color:var(--red-border);':'';
+    if(_rpChiuso&&!cellClass.includes('absent'))cellClass+=' absent';
+    var _rpChiusoInfo=_rpChiusoAtt.map(function(a){var motivLabel=MOTIV_LABEL_RP[a.chiusoMotiv]||'Chiuso';return '<div class="cal-cell-info" style="color:var(--red);font-weight:600;font-size:8px"><span class="cal-nome-desktop">'+motivLabel+'</span><span class="cal-nome-mobile">X</span></div>';}).join('');
+    html+='<div class="'+cellClass+'" style="'+_rpStyle+'"><div class="cal-day-num">'+d+'</div>'+_rpChiusoInfo+info+'</div>';
   }
   html+='</div>';return html;
 }
@@ -1232,7 +1278,10 @@ function renderCalendario(){
         return '<div class="cal-cell-info" style="color:var(--red);font-size:9px;opacity:0.7"><span class="cal-nome-desktop">'+nomeBreve+' · Assente</span><span class="cal-nome-mobile">'+iniziali+'</span></div>';
       }).join('');
     }
-    html+='<div class="'+cellClass+'" onclick="apriGiornoPanel(\''+dateStr+'\')" style="cursor:pointer"><div class="cal-day-num">'+d+'</div>'+infoHtml+'</div>';
+    var _calColori=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];
+    var _lucchetti=cantieri.map(function(c,ci){var _attC=(attivitaData||[]).find(function(a){return a.cantiereId===c.id&&a.data===dateStr&&a.chiuso;});if(!_attC)return '';var _col=_calColori[ci%_calColori.length];var _svg='<svg width="8" height="9" viewBox="0 0 8 9" fill="'+_col+'" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="4" width="6" height="5" rx="1"/><path d="M2 4V2.5a2 2 0 1 1 4 0V4" stroke="'+_col+'" stroke-width="1.2" fill="none"/></svg>';return _svg;}).join('');
+    var _dayNum='<div style="display:flex;align-items:center;justify-content:space-between"><span class="cal-day-num" style="margin-bottom:0">'+d+'</span>'+(_lucchetti?'<span style="display:flex;gap:1px;line-height:1">'+_lucchetti+'</span>':'')+' </div>';
+    html+='<div class="'+cellClass+'" onclick="apriGiornoPanel(\''+dateStr+'\')" style="cursor:pointer">'+ _dayNum +infoHtml+'</div>';
   }
   html+='</div>';
   calGrid.innerHTML=html;
@@ -1357,10 +1406,74 @@ function qrRenderOperai(){
 function qrRenderCantieri(){
   var el=document.getElementById('qr-cantieri'); if(!el)return;
   if(!qrDateStr){el.innerHTML='<div style="font-size:12px;color:var(--text3)">Seleziona un giorno</div>';return;}
+  var MOTIV_LABEL={'maltempo':'Maltempo','attesa_materiali':'Attesa mat.','festivita':'Festivita','fermo_tecnico':'Fermo tec.','altro':'Chiuso'};
   el.innerHTML=cantieri.map(function(c){
-    var cls='qr-chip'+(qrCantSel===c.id?' selected':'');
-    return '<button class="'+cls+'" onclick="qrSelCant('+c.id+')">'+c.nome+'</button>';
+    var attC=(attivitaData||[]).find(function(a){return a.cantiereId===c.id&&a.data===qrDateStr&&a.chiuso;});
+    var cls='qr-chip'+(attC?' absent':qrCantSel===c.id?' selected':'');
+    var chiusoLabel=attC?(' <span style="font-size:10px;opacity:0.8">['+( MOTIV_LABEL[attC.chiusoMotiv]||'Chiuso')+']</span>'):'';
+    var lockBtn=attC
+      ?'<span onclick="event.stopPropagation();qrRiapriCantiere('+c.id+')" style="margin-left:6px;font-size:11px;cursor:pointer;opacity:0.8" title="Riapri">&#128275;</span>'
+      :'<span onclick="event.stopPropagation();qrApriChiusuraCantiere('+c.id+')" style="margin-left:6px;font-size:11px;cursor:pointer;opacity:0.5" title="Segna chiuso">&#128274;</span>';
+    return '<button class="'+cls+'" onclick="qrSelCant('+c.id+')" style="display:flex;align-items:center;justify-content:space-between">'+
+      '<span>'+c.nome+chiusoLabel+'</span>'+lockBtn+'</button>';
   }).join('');
+}
+
+function qrApriChiusuraCantiere(cantId){
+  if(!qrDateStr){toast('Seleziona prima un giorno!');return;}
+  // Blocca se ci sono già presenze su questo cantiere in questa data
+  var presenzeEsistenti=presenze.filter(function(p){return p.cantiereId===cantId&&p.data===qrDateStr&&!p.assente;});
+  if(presenzeEsistenti.length){
+    toast('⚠️ Impossibile chiudere: '+presenzeEsistenti.length+' operaio/i già registrati su questo cantiere!');
+    return;
+  }
+  var nome=nomeCant(cantId);
+  var modal=document.getElementById('qr-chiusura-modal');
+  document.getElementById('qr-chiusura-nome').textContent='"'+nome+'"';
+  document.getElementById('qr-chiusura-motiv').value='maltempo';
+  modal.style.display='flex';
+  modal.dataset.cantId=cantId;
+}
+
+function qrConfermaChiusura(){
+  var modal=document.getElementById('qr-chiusura-modal');
+  var cantId=parseInt(modal.dataset.cantId);
+  var motiv=document.getElementById('qr-chiusura-motiv').value;
+  var idx=attivitaData.findIndex(function(a){return a.cantiereId===cantId&&a.data===qrDateStr;});
+  if(idx>=0){
+    attivitaData[idx].chiuso=true;
+    attivitaData[idx].chiusoMotiv=motiv;
+  } else {
+    attivitaData.push({id:nextAttId++,cantiereId:cantId,data:qrDateStr,categorie:[],note:'',chiuso:true,chiusoMotiv:motiv});
+    save('op_nattid',nextAttId);
+  }
+  save('op_attivita',attivitaData);
+  cloudSave();
+  modal.style.display='none';
+  refreshTutto();
+  toast('Cantiere segnato come chiuso!');
+}
+
+function qrAnnullaChiusura(){
+  document.getElementById('qr-chiusura-modal').style.display='none';
+}
+
+function qrRiapriCantiere(cantId){
+  if(!qrDateStr)return;
+  apriConferma('Riaprire il cantiere per questo giorno?',function(){
+    var idx=attivitaData.findIndex(function(a){return a.cantiereId===cantId&&a.data===qrDateStr;});
+    if(idx>=0){
+      attivitaData[idx].chiuso=false;
+      attivitaData[idx].chiusoMotiv='';
+      if(!attivitaData[idx].categorie.length&&!attivitaData[idx].note){
+        attivitaData.splice(idx,1);
+      }
+    }
+    save('op_attivita',attivitaData);
+    cloudSave();
+    refreshTutto();
+    toast('Cantiere riaperto!');
+  });
 }
 
 function qrRenderRiepilogo(){
@@ -1445,6 +1558,13 @@ function qrSelCant(id){
 function qrRegistra(){
   var ent=impostazioni.entrata||'08:00';
   var usc=impostazioni.uscita||'17:00';
+  // Blocca se cantiere chiuso
+  var attCantiere=(attivitaData||[]).find(function(a){return a.cantiereId===qrCantSel&&a.data===qrDateStr&&a.chiuso;});
+  if(attCantiere){
+    var motivLabel={'maltempo':'Maltempo','attesa_materiali':'Attesa materiali','festivita':'Festività','fermo_tecnico':'Fermo tecnico','altro':'Altro'};
+    toast('⚠️ Cantiere chiuso: '+(motivLabel[attCantiere.chiusoMotiv]||'Chiuso')+'. Impossibile registrare presenza.');
+    qrCantSel=null;qrRenderCantieri();return;
+  }
   var sov=presenze.filter(function(p){return p.operaioId===qrOpSel&&p.data===qrDateStr&&!p.assente&&orariSovrapposti(ent,usc,p.entrata,p.uscita);});
   if(sov.length){toast('⚠️ Presenza sovrapposta per '+nomeOp(qrOpSel)+'!');qrOpSel=null;qrRenderOperai();return;}
   var newId=nextPId++;
@@ -1662,7 +1782,9 @@ function raRenderCalendario(){
       if(att.categorie&&att.categorie.length)
         info+='<div class="cal-cell-info" style="font-size:9px;font-weight:600;color:'+col+'">'+nomeCant+': '+att.categorie[0]+'</div>';
     });
-    html+='<div class="'+cellClass+'"><div class="cal-day-num">'+d+'</div>'+info+'</div>';
+    var _rCalColori=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];var _rLucchetti=cantieri.map(function(c,ci){var _attC=(attivitaData||[]).find(function(a){return a.cantiereId===c.id&&a.data===dateStr&&a.chiuso;});if(!_attC)return '';var _col=_rCalColori[ci%_rCalColori.length];return '<svg width="8" height="9" viewBox="0 0 8 9" fill="'+_col+'" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="4" width="6" height="5" rx="1"/><path d="M2 4V2.5a2 2 0 1 1 4 0V4" stroke="'+_col+'" stroke-width="1.2" fill="none"/></svg>';}).join('');
+    var _rDayNum='<div style="display:flex;align-items:center;justify-content:space-between"><span class="cal-day-num" style="margin-bottom:0">'+d+'</span>'+(_rLucchetti?'<span>'+_rLucchetti+'</span>':'')+' </div>';
+    html+='<div class="'+cellClass+'">'+_rDayNum+info+'</div>';
   }
   html+='</div>';
   // Legenda
@@ -1744,21 +1866,25 @@ function attRenderCalendario(){
   var primo=new Date(attAnno,attMese-1,1),ultimo=new Date(attAnno,attMese,0);
   var startDow=(primo.getDay()+6)%7;
   for(var i=0;i<startDow;i++)html+='<div class="cal-cell empty"></div>';
+  var MOTIV_LABEL={'maltempo':'Maltempo','attesa_materiali':'Attesa mat.','festivita':'Festivita','fermo_tecnico':'Fermo tec.','altro':'Chiuso'};
   for(var d=1;d<=ultimo.getDate();d++){
     var dateStr=attAnno+'-'+String(attMese).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var isToday=dateStr===oggi;
     var att=attivitaData.find(function(a){return a.cantiereId===attCantSel&&a.data===dateStr;});
     var fest=isFestivo(dateStr);
-    var cellClass='cal-cell'+(fest.festivo?' festivo':'')+(isToday?' today':'')+(att?' has-data':'');
+    var isChiuso=att&&att.chiuso;
+    var cellClass='cal-cell'+(fest.festivo?' festivo':'')+(isToday?' today':'')+(att&&!isChiuso?' has-data':'')+(isChiuso?' absent':'');
     var info='';
     if(fest.festivo)info+='<div class="cal-festivo-label">'+fest.label+'</div>';
-    if(att){
+    if(isChiuso){
+      info+='<div class="cal-cell-info" style="font-size:8px;font-weight:700;color:var(--red)"><span class="cal-nome-desktop">'+(MOTIV_LABEL[att.chiusoMotiv]||'Chiuso')+'</span><span class="cal-nome-mobile">X</span></div>';
+    } else if(att){
       if(att.categorie&&att.categorie.length)
-        info+='<div class="cal-cell-info" style="font-size:9px;font-weight:600;color:var(--accent)">'+att.categorie.slice(0,2).join(', ')+(att.categorie.length>2?' +'+( att.categorie.length-2):'')+'</div>';
+        info+='<div class="cal-cell-info" style="font-size:9px;font-weight:600;color:var(--accent)">'+att.categorie.slice(0,2).join(', ')+(att.categorie.length>2?' +'+(att.categorie.length-2):'')+'</div>';
       if(att.note)
         info+='<div class="cal-cell-info" style="font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+att.note.substring(0,20)+'</div>';
     }
-    html+='<div class="'+cellClass+'" onclick="attApriModal(\''+dateStr+'\')" style="cursor:pointer;'+(att?'background:var(--surface2);border-color:var(--accent)':'')+' "><div class="cal-day-num">'+d+'</div>'+info+'</div>';
+    html+='<div class="'+cellClass+'" onclick="attApriModal(\''+dateStr+'\')" style="cursor:pointer;'+(isChiuso?'background:var(--red-bg);border-color:var(--red-border);':att?'background:var(--surface2);border-color:var(--accent);':'')+'" ><div class="cal-day-num">'+d+'</div>'+info+'</div>';
   }
   html+='</div></div>';
   el.innerHTML=html;
@@ -1780,6 +1906,13 @@ function attApriModal(dateStr){
   document.getElementById('att-modal-data').value=dateStr;
   // Categorie
   var att=attivitaData.find(function(a){return a.cantiereId===attCantSel&&a.data===dateStr;});
+  // Imposta stato chiuso
+  var cbChiuso=document.getElementById('att-modal-chiuso');
+  var wrapChiuso=document.getElementById('att-modal-chiuso-motiv-wrap');
+  if(cbChiuso){cbChiuso.checked=att?!!att.chiuso:false;}
+  if(wrapChiuso){wrapChiuso.style.display=(att&&att.chiuso)?'block':'none';}
+  var selMotiv=document.getElementById('att-modal-chiuso-motiv');
+  if(selMotiv&&att&&att.chiusoMotiv){selMotiv.value=att.chiusoMotiv;}
   var selCat=att?att.categorie:[];
   document.getElementById('att-modal-categorie').innerHTML=attCategorie.map(function(cat){
     var sel=selCat.indexOf(cat)>=0;
@@ -1798,25 +1931,36 @@ function attChiudiModal(){
   document.getElementById('att-modal').style.display='none';
 }
 
+function attToggleChiuso(){
+  var cb=document.getElementById('att-modal-chiuso');
+  var wrap=document.getElementById('att-modal-chiuso-motiv-wrap');
+  if(wrap)wrap.style.display=cb.checked?'block':'none';
+}
+
 function attSalvaGiorno(){
   var cantId=parseInt(document.getElementById('att-modal-cant').value);
   var dateStr=document.getElementById('att-modal-data').value;
   var note=document.getElementById('att-modal-note').value.trim();
   var selBtns=document.querySelectorAll('#att-modal-categorie .qr-chip.selected');
   var categorie=Array.from(selBtns).map(function(b){return b.textContent;});
-  if(!categorie.length&&!note){toast('Seleziona almeno una categoria o aggiungi una nota!');return;}
+  var chiuso=document.getElementById('att-modal-chiuso').checked;
+  var chiusoMotiv=chiuso?document.getElementById('att-modal-chiuso-motiv').value:'';
+  if(!chiuso&&!categorie.length&&!note){toast('Seleziona almeno una categoria, aggiungi una nota, o segna il cantiere come chiuso!');return;}
   var idx=attivitaData.findIndex(function(a){return a.cantiereId===cantId&&a.data===dateStr;});
   if(idx>=0){
     attivitaData[idx].categorie=categorie;
     attivitaData[idx].note=note;
+    attivitaData[idx].chiuso=chiuso;
+    attivitaData[idx].chiusoMotiv=chiusoMotiv;
   } else {
-    attivitaData.push({id:nextAttId++,cantiereId:cantId,data:dateStr,categorie:categorie,note:note});
+    attivitaData.push({id:nextAttId++,cantiereId:cantId,data:dateStr,categorie:categorie,note:note,chiuso:chiuso,chiusoMotiv:chiusoMotiv});
     save('op_nattid',nextAttId);
   }
+  cloudSave();
   save('op_attivita',attivitaData);
   attChiudiModal();
   attRenderCalendario();
-  toast('Attività salvata!');
+  toast(chiuso?'Cantiere segnato come chiuso!':'Attività salvata!');
 }
 
 function attEliminaGiorno(){
@@ -1862,7 +2006,7 @@ function impRimuoviCategoria(i){
 
 
 // ── RICONOSCIMENTO VOCALE ────────────────────────────────
-var _voceRec=null, _voceOpId=null, _voceCantId=null, _voceDateStr=null, _voceMotiv=null;
+var _voceRec=null, _voceOpId=null, _voceCantId=null, _voceDateStr=null, _voceMotiv=null, _voceChiusura=false, _voceChiusuraMotiv=null;
 
 var MESI_VOCE={
   'gennaio':1,'febbraio':2,'marzo':3,'aprile':4,'maggio':5,'giugno':6,
@@ -1916,7 +2060,14 @@ function voceReset(){
 function voceParsa(testo){
   var ris=document.getElementById('voce-risultato');
 
-  // --- Motivazioni assenza ---
+  // --- Motivazioni chiusura cantiere ---
+  var MOTIV_CHIUSURA={'maltempo':'maltempo','attesa materiali':'attesa_materiali','attesa':'attesa_materiali','festivita':'festivita','festività':'festivita','fermo tecnico':'fermo_tecnico','fermo':'fermo_tecnico'};
+  var motivChiusura=null;
+  Object.keys(MOTIV_CHIUSURA).forEach(function(k){if(testo.includes(k))motivChiusura=MOTIV_CHIUSURA[k];});
+  var isChiusoCantiere=(motivChiusura||testo.includes('chiuso')||testo.includes('chiusa'));
+  var tuttiChiusi=(testo.includes('tutto chiuso')||testo.includes('tutti chiusi')||testo.includes('tutto chiusa'));
+
+  // --- Motivazioni assenza operaio ---
   var MOTIV_VOCE={'malattia':'malattia','ferie':'ferie','infortunio':'infortunio','permesso':'permesso','assente':'altro','assenza':'altro'};
   var motivTrovata=null;
   Object.keys(MOTIV_VOCE).forEach(function(k){if(testo.includes(k))motivTrovata=MOTIV_VOCE[k];});
@@ -1959,22 +2110,45 @@ function voceParsa(testo){
     });
   }
 
-  // --- Riconosci cantiere (solo se non assenza) ---
+  // --- Riconosci cantiere ---
   var cantTrovato=null;
-  if(!motivTrovata){
-    var maxScoreCant=0;
-    cantieri.forEach(function(c){
-      var parti=c.nome.toLowerCase().split(' ');
-      var score=0;
-      parti.forEach(function(p){if(p.length>2&&testo.includes(p))score++;});
-      if(score>maxScoreCant){maxScoreCant=score;cantTrovato=c;}
-    });
+  var maxScoreCant=0;
+  cantieri.forEach(function(c){
+    var parti=c.nome.toLowerCase().split(' ');
+    var score=0;
+    parti.forEach(function(p){if(p.length>2&&testo.includes(p))score++;});
+    if(score>maxScoreCant){maxScoreCant=score;cantTrovato=c;}
+  });
+
+  // --- Caso: chiusura cantiere ---
+  if(isChiusoCantiere||tuttiChiusi){
+    var erroriC=[];
+    if(!tuttiChiusi&&(!cantTrovato||maxScoreCant===0)) erroriC.push('cantiere non trovato');
+    if(erroriC.length){ris.textContent+=(' — '+erroriC.join(', ')+'. Riprova.');return;}
+    _voceDateStr=dataFound;
+    _voceOpId=null;
+    _voceCantId=tuttiChiusi?'tutti':cantTrovato.id;
+    _voceMotiv=null;
+    _voceChiusura=true;
+    _voceChiusuraMotiv=motivChiusura||'altro';
+    var dataLabel=new Date(dataFound+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+    var cantLabel=tuttiChiusi?'Tutti i cantieri':(cantTrovato?cantTrovato.nome:'');
+    var motivLabel={'maltempo':'Maltempo','attesa_materiali':'Attesa materiali','festivita':'Festività','fermo_tecnico':'Fermo tecnico','altro':'Chiuso'};
+    var conf=document.getElementById('voce-confirm');
+    var confText=document.getElementById('voce-confirm-text');
+    confText.innerHTML='<b>Data:</b> '+dataLabel+'<br><b>Cantiere:</b> '+cantLabel+'<br><b>Stato:</b> Chiuso — '+(motivLabel[_voceChiusuraMotiv]||'Chiuso');
+    conf.style.display='block';
+    return;
   }
+
+  // --- Caso: operaio ---
+  _voceChiusura=false;
+  if(!motivTrovata&&!cantTrovato) {ris.textContent+=(' — cantiere non trovato. Riprova.');return;}
 
   // --- Validazione ---
   var errori=[];
   if(!tuttiGliOperai&&(!opTrovato||maxScoreOp===0)) errori.push('operaio non trovato');
-  if(!motivTrovata&&(!cantTrovato)) errori.push('cantiere non trovato');
+  if(!motivTrovata&&(!cantTrovato||maxScoreCant===0)) errori.push('cantiere non trovato');
   if(errori.length){
     ris.textContent+=(' — '+errori.join(', ')+'. Riprova.');
     return;
@@ -1999,7 +2173,36 @@ function voceParsa(testo){
 }
 
 function voceConferma(){
-  if(!_voceOpId||!_voceDateStr){return;}
+  if(!_voceDateStr){return;}
+
+  // --- Chiusura cantiere ---
+  if(_voceChiusura){
+    var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+    var cantieriDaChiudere=_voceCantId==='tutti'?cantieri:[cantieri.find(function(c){return c.id===_voceCantId;})].filter(Boolean);
+    cantieriDaChiudere.forEach(function(c){
+      // Controlla presenze esistenti
+      var pres=presenze.filter(function(p){return p.cantiereId===c.id&&p.data===_voceDateStr&&!p.assente;});
+      if(pres.length){toast('⚠️ '+c.nome+': presenze già registrate, impossibile chiudere.');return;}
+      var idx=attivitaData.findIndex(function(a){return a.cantiereId===c.id&&a.data===_voceDateStr;});
+      if(idx>=0){attivitaData[idx].chiuso=true;attivitaData[idx].chiusoMotiv=_voceChiusuraMotiv||'altro';}
+      else{attivitaData.push({id:nextAttId++,cantiereId:c.id,data:_voceDateStr,categorie:[],note:'',chiuso:true,chiusoMotiv:_voceChiusuraMotiv||'altro'});save('op_nattid',nextAttId);}
+    });
+    save('op_attivita',attivitaData);
+    cloudSave();
+    // Leggi conferma
+    if(window.speechSynthesis){
+      window.speechSynthesis.cancel();
+      var cantLabel=_voceCantId==='tutti'?'tutti i cantieri':nomeCant(_voceCantId);
+      var msg=new SpeechSynthesisUtterance('Chiuso. '+cantLabel+', '+dataLabel+'.');
+      msg.lang='it-IT';window.speechSynthesis.speak(msg);
+    }
+    refreshTutto();
+    toast('✓ Cantiere chiuso!');
+    voceAnnulla();
+    return;
+  }
+
+  if(!_voceOpId){return;}
   var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
 
   // Leggi conferma ad alta voce
@@ -2049,7 +2252,7 @@ function voceConferma(){
 }
 
 function voceAnnulla(){
-  _voceOpId=null;_voceCantId=null;_voceDateStr=null;
+  _voceOpId=null;_voceCantId=null;_voceDateStr=null;_voceChiusura=false;_voceChiusuraMotiv=null;
   var conf=document.getElementById('voce-confirm');
   if(conf)conf.style.display='none';
   var ris=document.getElementById('voce-risultato');
