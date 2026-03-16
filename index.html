@@ -390,15 +390,35 @@ tbody tr:hover td{background:var(--surface2);}
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Operaio</div>
             <div id="rp-operai"></div>
           </div>
+          <button id="rp-op-sub-libro" onclick="rpOpShowSub('libro')" class="btn btn-secondary" style="font-size:12px;font-weight:700;width:100%">Libro Giornale</button>
+          <button id="rp-op-sub-cal" onclick="rpOpShowSub('cal')" class="btn btn-ghost" style="font-size:12px;font-weight:700;width:100%;display:none">← Calendario</button>
         </div>
+        <div id="rp-op-tab-cal" style="">
         <div class="card" id="rp-risultato-op">
           <div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un operaio</div>
+        </div>
+      </div>
+        </div><!-- end rp-op-tab-cal -->
+        <!-- Libro Giornale Operai -->
+        <div id="rp-op-tab-libro" style="display:none">
+          <div class="card" id="rp-op-libro-content">
+            <div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un operaio</div>
+          </div>
+          <div style="margin-top:1rem;text-align:right">
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn btn-ghost" style="font-weight:700" onclick="rpOpShowSub('cal')">← Calendario</button>
+              <button class="btn btn-primary" onclick="rpStampaLibroOp()" style="display:none;font-weight:700" id="btn-stampa-libro-op">Esporta PDF</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Sub-tab Cantieri -->
     <div id="rp-tab-cantieri" style="display:none">
+
+      <!-- Calendario -->
+      <div id="rp-cant-tab-cal">
       <div style="display:grid;grid-template-columns:180px 1fr;gap:1rem;align-items:start" class="qr-two-col">
         <div style="display:flex;flex-direction:column;gap:0.75rem;">
           <div class="card" style="padding:0.75rem 1rem">
@@ -413,9 +433,30 @@ tbody tr:hover td{background:var(--surface2);}
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Cantiere</div>
             <div id="rp-cantieri"></div>
           </div>
+          <button id="rp-cant-sub-libro" onclick="rpCantShowSub('libro')" class="btn btn-secondary" style="font-size:12px;font-weight:700;width:100%">Libro Giornale</button>
+          <button id="rp-cant-sub-cal" onclick="rpCantShowSub('cal')" class="btn btn-ghost" style="font-size:12px;font-weight:700;width:100%;display:none">← Calendario</button>
         </div>
         <div class="card" id="rp-risultato-cant">
           <div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un cantiere</div>
+        </div>
+      </div>
+      </div>
+      <!-- Libro Giornale -->
+      <div id="rp-cant-tab-libro" style="display:none">
+        <div style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1rem">
+          <div class="card" style="padding:0.75rem 1rem">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Cantiere</div>
+            <div id="rp-libro-cantieri" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+          </div>
+        </div>
+        <div class="card" id="rp-libro-content">
+          <div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un cantiere</div>
+        </div>
+        <div style="margin-top:1rem;text-align:right">
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-ghost" style="font-weight:700" onclick="rpCantShowSub('cal')">← Calendario</button>
+            <button class="btn btn-primary" onclick="rpStampaLibro()" style="display:none;font-weight:700" id="btn-stampa-libro">Esporta PDF</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2875,6 +2916,464 @@ async function salvaSulCloud(){
   setTimeout(function(){
     if(btn){btn.textContent='Salva';btn.style.opacity='1';btn.disabled=false;btn.style.background='var(--green-bg)';btn.style.color='var(--green)';}
   },3000);
+}
+
+// ── LIBRO GIORNALE ───────────────────────────────────────
+var rpLibroCantSel=null;
+
+function rpCantShowSub(sub){
+  var cal=document.getElementById('rp-cant-tab-cal');
+  var libro=document.getElementById('rp-cant-tab-libro');
+  var btnCal=document.getElementById('rp-cant-sub-cal');
+  var btnLibro=document.getElementById('rp-cant-sub-libro');
+  if(sub==='cal'){
+    if(cal)cal.style.display='';
+    if(libro)libro.style.display='none';
+    if(btnCal)btnCal.style.display='none';
+    if(btnLibro)btnLibro.style.display='inline-block';
+  } else {
+    if(cal)cal.style.display='none';
+    if(libro)libro.style.display='';
+    if(btnCal)btnCal.style.display='inline-block';
+    if(btnLibro)btnLibro.style.display='none';
+    rpRenderLibroCantieri();
+    if(rpLibroCantSel)rpRenderLibro();
+  }
+}
+
+function rpRenderLibroCantieri(){
+  var el=document.getElementById('rp-libro-cantieri');if(!el)return;
+  el.innerHTML=cantieri.map(function(c){
+    var sel=rpLibroCantSel===c.id;
+    return '<button class="qr-chip'+(sel?' selected':'')+'" onclick="rpSelLibroCant('+c.id+')">'+c.nome+'</button>';
+  }).join('');
+}
+
+function rpSelLibroCant(id){
+  rpLibroCantSel=id;
+  rpRenderLibroCantieri();
+  rpRenderLibro();
+}
+
+function rpRenderLibro(){
+  var el=document.getElementById('rp-libro-content');if(!el)return;
+  var btnPdf=document.getElementById('btn-stampa-libro');
+  if(!rpLibroCantSel){
+    el.innerHTML='<div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un cantiere</div>';
+    return;
+  }
+  var c=cantieri.find(function(x){return x.id===rpLibroCantSel;});if(!c)return;
+
+  var CHIUSURA_LABEL={'maltempo':'Maltempo','attesa_materiali':'Attesa mat.','festivita':'Festività','fermo_tecnico':'Fermo tec.','altro':'Chiuso'};
+
+  // Raccogli tutti i giorni
+  var giorniSet=new Set();
+  presenze.filter(function(p){return p.cantiereId===rpLibroCantSel;}).forEach(function(p){giorniSet.add(p.data);});
+  (attivitaData||[]).filter(function(a){return a.cantiereId===rpLibroCantSel;}).forEach(function(a){giorniSet.add(a.data);});
+  var giorni=Array.from(giorniSet).sort();
+
+  if(!giorni.length){
+    el.innerHTML='<div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Nessun dato per questo cantiere</div>';
+    if(btnPdf)btnPdf.style.display='none';
+    return;
+  }
+
+  var mesiIt=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+  // Raggruppa per mese
+  var mesiMap={};
+  giorni.forEach(function(d){
+    var m=d.slice(0,7);
+    if(!mesiMap[m])mesiMap[m]=[];
+    mesiMap[m].push(d);
+  });
+
+  var totGiorni=0,totOreAll=0;
+
+  var html='<div style="margin-bottom:12px">'+
+    '<strong style="font-size:15px">'+c.nome+'</strong>'+
+    '<span style="font-size:11px;color:var(--text2);margin-left:8px">'+c.indirizzo+'</span>'+
+  '</div>';
+
+  var thStyle='padding:4px 8px;background:var(--surface2);border:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text3);white-space:nowrap;';
+  var tdStyle='padding:4px 8px;border:1px solid var(--border);font-size:11px;vertical-align:top;';
+
+  Object.keys(mesiMap).sort().forEach(function(meseStr){
+    var anno=parseInt(meseStr.slice(0,4)),mese=parseInt(meseStr.slice(5,7));
+    html+='<div style="margin-bottom:1.5rem">';
+    html+='<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--accent);margin-bottom:6px;padding-bottom:4px;border-bottom:2px solid var(--accent)">'+mesiIt[mese-1]+' '+anno+'</div>';
+    html+='<table style="width:100%;border-collapse:collapse">';
+    html+='<thead><tr>'+
+      '<th style="'+thStyle+'width:90px">Giorno</th>'+
+      '<th style="'+thStyle+'width:80px">Stato</th>'+
+      '<th style="'+thStyle+'">Attività</th>'+
+      '<th style="'+thStyle+'width:40px;text-align:center">GG</th>'+
+      '<th style="'+thStyle+'">Operai</th>'+
+      '<th style="'+thStyle+'width:50px;text-align:right">Ore</th>'+
+    '</tr></thead><tbody>';
+
+    mesiMap[meseStr].forEach(function(dateStr){
+      var data=new Date(dateStr+'T00:00:00');
+      var gg=data.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit'});
+      var fest=isFestivo(dateStr);
+      var att=(attivitaData||[]).find(function(a){return a.cantiereId===rpLibroCantSel&&a.data===dateStr;});
+      var isChiuso=att&&att.chiuso;
+      var ppGiorno=presenze.filter(function(p){return p.cantiereId===rpLibroCantSel&&p.data===dateStr&&!p.assente;});
+      var oreGiorno=ppGiorno.reduce(function(s,p){return s+calcOre(p.entrata,p.uscita);},0);
+
+      // Salta giorni senza dati significativi
+      if(!isChiuso&&!fest.festivo&&ppGiorno.length===0&&(!att||(!att.categorie||!att.categorie.length)&&!att.note)) return;
+
+      if(ppGiorno.length>0){totGiorni++;totOreAll+=oreGiorno;}
+
+      var rowBg=isChiuso?'background:var(--red-bg)':fest.festivo?'background:#fff5f5':'';
+
+      // Stato
+      var statoCell='';
+      if(isChiuso) statoCell='<span style="color:var(--red);font-weight:600;font-size:10px">'+(CHIUSURA_LABEL[att.chiusoMotiv]||'Chiuso')+'</span>';
+      else if(fest.festivo) statoCell='<span style="color:var(--red);font-size:10px">'+fest.label+'</span>';
+      else if(ppGiorno.length>0) statoCell='<span style="color:var(--green);font-weight:600;font-size:10px">Aperto</span>';
+      else statoCell='<span style="color:var(--text3);font-size:10px">—</span>';
+
+      // Attività
+      var attCell='<span style="color:var(--text3);font-size:10px">—</span>';
+      if(att&&!isChiuso){
+        var parti=[];
+        if(att.categorie&&att.categorie.length) parti.push('<span style="color:var(--accent);font-weight:600;font-size:10px">'+att.categorie.join(', ')+'</span>');
+        if(att.note) parti.push('<span style="color:var(--text2);font-size:10px;font-style:italic">'+att.note+'</span>');
+        if(parti.length) attCell=parti.join('<br>');
+      }
+
+      // Operai
+      var nomi=ppGiorno.map(function(p){return nomeOp(p.operaioId).split(' ')[0];}).join(', ');
+      var nomiCell=nomi?'<span style="font-size:10px">'+nomi+'</span>':'<span style="color:var(--text3);font-size:10px">—</span>';
+
+      html+='<tr style="'+rowBg+'">'+
+        '<td style="'+tdStyle+'white-space:nowrap;font-family:\'DM Mono\',monospace">'+gg+'</td>'+
+        '<td style="'+tdStyle+'">'+statoCell+'</td>'+
+        '<td style="'+tdStyle+'">'+attCell+'</td>'+
+        '<td style="'+tdStyle+'text-align:center;font-weight:600">'+( ppGiorno.length||'')+'</td>'+
+        '<td style="'+tdStyle+'">'+nomiCell+'</td>'+
+        '<td style="'+tdStyle+'text-align:right;font-family:\'DM Mono\',monospace;font-weight:600;color:var(--green)">'+( oreGiorno?oreGiorno+'h':'')+'</td>'+
+      '</tr>';
+    });
+
+    html+='</tbody></table></div>';
+  });
+
+  // Totali finali
+  html+='<div style="display:flex;gap:2rem;background:var(--surface2);padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;border:1px solid var(--border)">'+
+    '<span>Giornate lavorate: <strong style="color:var(--accent)">'+totGiorni+'</strong></span>'+
+    '<span>Ore totali: <strong style="color:var(--green)">'+totOreAll+'h</strong></span>'+
+  '</div>';
+
+  el.innerHTML=html;
+  if(btnPdf)btnPdf.style.display='inline-block';
+}
+
+function rpStampaLibro(){
+  var c=cantieri.find(function(x){return x.id===rpLibroCantSel;});if(!c)return;
+  var CHIUSURA_LABEL={'maltempo':'Maltempo','attesa_materiali':'Attesa mat.','festivita':'Festivita','fermo_tecnico':'Fermo tec.','altro':'Chiuso'};
+  var mesiIt=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+  var giorniSet=new Set();
+  presenze.filter(function(p){return p.cantiereId===rpLibroCantSel;}).forEach(function(p){giorniSet.add(p.data);});
+  (attivitaData||[]).filter(function(a){return a.cantiereId===rpLibroCantSel;}).forEach(function(a){giorniSet.add(a.data);});
+  var giorni=Array.from(giorniSet).sort();
+
+  var mesiMap={};
+  giorni.forEach(function(d){var m=d.slice(0,7);if(!mesiMap[m])mesiMap[m]=[];mesiMap[m].push(d);});
+
+  var TH='padding:5px 8px;border:1px solid #888;background:#f0ede8;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;text-align:left;font-weight:bold;';
+  var TD='padding:4px 8px;border:1px solid #aaa;font-size:10px;vertical-align:top;';
+
+  var html='<h2 style="font-size:14px;margin:0 0 4px">'+c.nome+'</h2>';
+  html+='<p style="font-size:10px;color:#666;margin:0 0 14px">'+c.indirizzo+'</p>';
+
+  var totGiorni=0,totOre=0;
+
+  Object.keys(mesiMap).sort().forEach(function(meseStr){
+    var anno=parseInt(meseStr.slice(0,4)),mese=parseInt(meseStr.slice(5,7));
+    html+='<div style="font-size:11px;font-weight:bold;text-transform:uppercase;color:#C8501A;border-bottom:2px solid #C8501A;padding-bottom:3px;margin:14px 0 6px">'+mesiIt[mese-1]+' '+anno+'</div>';
+    html+='<table style="width:100%;border-collapse:collapse;margin-bottom:4px">';
+    html+='<thead><tr>';
+    html+='<th style="'+TH+'width:70px">Giorno</th>';
+    html+='<th style="'+TH+'width:80px">Stato</th>';
+    html+='<th style="'+TH+'">Attivita</th>';
+    html+='<th style="'+TH+'width:30px;text-align:center">GG</th>';
+    html+='<th style="'+TH+'">Operai</th>';
+    html+='<th style="'+TH+'width:45px;text-align:right">Ore</th>';
+    html+='</tr></thead><tbody>';
+
+    var rigaMese=0;
+    mesiMap[meseStr].forEach(function(dateStr){
+      var data=new Date(dateStr+'T00:00:00');
+      var gg=data.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit'});
+      var fest=isFestivo(dateStr);
+      var att=(attivitaData||[]).find(function(a){return a.cantiereId===rpLibroCantSel&&a.data===dateStr;});
+      var isChiuso=att&&att.chiuso;
+      var ppGiorno=presenze.filter(function(p){return p.cantiereId===rpLibroCantSel&&p.data===dateStr&&!p.assente;});
+      var oreGiorno=ppGiorno.reduce(function(s,p){return s+calcOre(p.entrata,p.uscita);},0);
+      if(!isChiuso&&!fest.festivo&&ppGiorno.length===0&&(!att||(!att.categorie||!att.categorie.length)&&!att.note))return;
+
+      if(ppGiorno.length>0){totGiorni++;totOre+=oreGiorno;}
+      rigaMese++;
+      var rowBg=rigaMese%2===0?'background:#fafaf8;':'';
+
+      var statoTxt=isChiuso?(CHIUSURA_LABEL[att.chiusoMotiv]||'Chiuso'):fest.festivo?fest.label:ppGiorno.length>0?'Aperto':'—';
+      var statoCol=isChiuso?'color:#c0392b;font-weight:bold':fest.festivo?'color:#c0392b':'color:#27ae60;font-weight:bold';
+      var attTxt=att&&!isChiuso?[(att.categorie&&att.categorie.length?att.categorie.join(', '):''),att.note||''].filter(Boolean).join(' - '):'';
+      var nomi=ppGiorno.map(function(p){return nomeOp(p.operaioId).split(' ')[0];}).join(', ');
+
+      html+='<tr style="'+rowBg+'">';
+      html+='<td style="'+TD+'white-space:nowrap">'+gg+'</td>';
+      html+='<td style="'+TD+statoCol+'">'+statoTxt+'</td>';
+      html+='<td style="'+TD+'">'+attTxt+'</td>';
+      html+='<td style="'+TD+'text-align:center;font-weight:bold">'+(ppGiorno.length||'')+'</td>';
+      html+='<td style="'+TD+'">'+nomi+'</td>';
+      html+='<td style="'+TD+'text-align:right;font-weight:bold;color:#27ae60">'+(oreGiorno?oreGiorno+'h':'')+'</td>';
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
+  });
+
+  html+='<div style="background:#f5f2ee;padding:8px 12px;font-size:10px;border:1px solid #ccc;margin-top:8px">';
+  html+='Giornate lavorate: <strong>'+totGiorni+'</strong> &nbsp;|&nbsp; Ore totali: <strong>'+totOre+'h</strong>';
+  html+='</div>';
+
+  var win=window.open('','_blank');
+  win.document.write('<html><head><title>Libro Giornale - '+c.nome+'</title>');
+  win.document.write('<style>body{font-family:Arial,sans-serif;margin:10mm;color:#1C1C1E}');
+  win.document.write('@media print{@page{size:A4;margin:10mm}tr{page-break-inside:avoid}}');
+  win.document.write('</style></head><body>');
+  win.document.write(html);
+  win.document.write('</body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},500);
+}
+
+// ── LIBRO GIORNALE OPERAI ────────────────────────────────
+var rpLibroOpSel=null;
+
+function rpOpShowSub(sub){
+  var cal=document.getElementById('rp-op-tab-cal');
+  var libro=document.getElementById('rp-op-tab-libro');
+  var btnCal=document.getElementById('rp-op-sub-cal');
+  var btnLibro=document.getElementById('rp-op-sub-libro');
+  if(sub==='cal'){
+    if(cal)cal.style.display='';
+    if(libro)libro.style.display='none';
+    if(btnCal)btnCal.style.display='none';
+    if(btnLibro)btnLibro.style.display='inline-block';
+  } else {
+    if(cal)cal.style.display='none';
+    if(libro)libro.style.display='';
+    if(btnCal)btnCal.style.display='inline-block';
+    if(btnLibro)btnLibro.style.display='none';
+    rpRenderLibroOp();
+  }
+}
+
+function rpRenderLibroOp(){
+  var el=document.getElementById('rp-op-libro-content');if(!el)return;
+  var btnPdf=document.getElementById('btn-stampa-libro-op');
+  if(!rpOpSel.length){
+    el.innerHTML='<div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona un operaio</div>';
+    if(btnPdf)btnPdf.style.display='none';
+    return;
+  }
+  // Usa primo operaio selezionato
+  rpLibroOpSel=rpOpSel[0];
+  var o=operai.find(function(x){return x.id===rpLibroOpSel;});if(!o)return;
+
+  var mesiIt=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  var MOTIV={'malattia':'Malattia','ferie':'Ferie','infortunio':'Infortunio','permesso':'Permesso','altro':'Assente'};
+
+  // Raccogli tutti i giorni con dati per questo operaio
+  var giorniSet=new Set();
+  presenze.filter(function(p){return p.operaioId===rpLibroOpSel;}).forEach(function(p){giorniSet.add(p.data);});
+  var giorni=Array.from(giorniSet).sort();
+
+  if(!giorni.length){
+    el.innerHTML='<div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Nessun dato per questo operaio</div>';
+    if(btnPdf)btnPdf.style.display='none';
+    return;
+  }
+
+  // Raggruppa per mese
+  var mesiMap={};
+  giorni.forEach(function(d){var m=d.slice(0,7);if(!mesiMap[m])mesiMap[m]=[];mesiMap[m].push(d);});
+
+  var totGiorni=0,totOre=0;
+  var assenzeCont={malattia:0,ferie:0,infortunio:0,permesso:0,altro:0};
+  var thStyle='padding:4px 8px;background:var(--surface2);border:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text3);';
+  var tdStyle='padding:4px 8px;border:1px solid var(--border);font-size:11px;vertical-align:top;';
+
+  var html='<div style="margin-bottom:12px"><strong style="font-size:15px">'+o.nome+'</strong>';
+  html+='<span style="font-size:11px;color:var(--text2);margin-left:8px">'+o.ruolo+'</span></div>';
+
+  Object.keys(mesiMap).sort().forEach(function(meseStr){
+    var anno=parseInt(meseStr.slice(0,4)),mese=parseInt(meseStr.slice(5,7));
+    html+='<div style="margin-bottom:1.5rem">';
+    html+='<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--accent);margin-bottom:6px;padding-bottom:4px;border-bottom:2px solid var(--accent)">'+mesiIt[mese-1]+' '+anno+'</div>';
+    html+='<table style="width:100%;border-collapse:collapse">';
+    html+='<thead><tr>'+
+      '<th style="'+thStyle+'width:80px">Giorno</th>'+
+      '<th style="'+thStyle+'width:80px">Stato</th>'+
+      '<th style="'+thStyle+'">Cantiere</th>'+
+      '<th style="'+thStyle+'width:50px;text-align:right">Ore</th>'+
+    '</tr></thead><tbody>';
+
+    var riga=0;
+    mesiMap[meseStr].forEach(function(dateStr){
+      var data=new Date(dateStr+'T00:00:00');
+      var gg=data.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit'});
+      var fest=isFestivo(dateStr);
+      var pres=presenze.find(function(p){return p.operaioId===rpLibroOpSel&&p.data===dateStr&&!p.assente;});
+      var ass=presenze.find(function(p){return p.operaioId===rpLibroOpSel&&p.data===dateStr&&p.assente;});
+
+      var statoCell='',cantiereCell='',oreCell='';
+      if(pres){
+        var ore=calcOre(pres.entrata,pres.uscita);
+        totGiorni++;totOre+=ore;
+        statoCell='<span style="color:var(--green);font-weight:600;font-size:10px">Presente</span>';
+        cantiereCell='<span style="font-size:11px">'+nomeCant(pres.cantiereId)+'</span>';
+        oreCell='<span style="font-weight:600;color:var(--green)">'+ore+'h</span>';
+      } else if(ass){
+        var motivKey=ass.motivazione||'altro';
+        if(assenzeCont[motivKey]!==undefined)assenzeCont[motivKey]++;else assenzeCont.altro++;
+        statoCell='<span style="color:var(--red);font-weight:600;font-size:10px">'+(MOTIV[ass.motivazione]||'Assente')+'</span>';
+        cantiereCell='<span style="color:var(--text3);font-size:10px">—</span>';
+        oreCell='';
+      } else if(fest.festivo){
+        statoCell='<span style="color:var(--red);font-size:10px">'+fest.label+'</span>';
+        cantiereCell='';oreCell='';
+      } else return;
+
+      riga++;
+      var rowBg=riga%2===0?'background:var(--surface2)':'';
+      html+='<tr style="'+rowBg+'">'+
+        '<td style="'+tdStyle+'white-space:nowrap;font-family:\'DM Mono\',monospace">'+gg+'</td>'+
+        '<td style="'+tdStyle+'">'+statoCell+'</td>'+
+        '<td style="'+tdStyle+'">'+cantiereCell+'</td>'+
+        '<td style="'+tdStyle+'text-align:right">'+oreCell+'</td>'+
+      '</tr>';
+    });
+
+    html+='</tbody></table></div>';
+  });
+
+  // Riepilogo assenze
+  var assTot=assenzeCont.malattia+assenzeCont.ferie+assenzeCont.infortunio+assenzeCont.permesso+assenzeCont.altro;
+  var assHtml='';
+  if(assTot>0){
+    var assVoci=[];
+    if(assenzeCont.malattia>0)assVoci.push('Malattia: <strong>'+assenzeCont.malattia+'</strong>');
+    if(assenzeCont.ferie>0)assVoci.push('Ferie: <strong>'+assenzeCont.ferie+'</strong>');
+    if(assenzeCont.infortunio>0)assVoci.push('Infortunio: <strong>'+assenzeCont.infortunio+'</strong>');
+    if(assenzeCont.permesso>0)assVoci.push('Permesso: <strong>'+assenzeCont.permesso+'</strong>');
+    if(assenzeCont.altro>0)assVoci.push('Altro: <strong>'+assenzeCont.altro+'</strong>');
+    assHtml='<div style="font-size:11px;color:var(--red);margin-top:4px">Assenze — '+assVoci.join(' | ')+'</div>';
+  }
+
+  html+='<div style="background:var(--surface2);padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;border:1px solid var(--border)">'+
+    '<div style="display:flex;gap:2rem;flex-wrap:wrap">'+
+    '<span>Giorni lavorati: <strong style="color:var(--accent)">'+totGiorni+'</strong></span>'+
+    '<span>Ore totali: <strong style="color:var(--green)">'+totOre+'h</strong></span>'+
+    (assTot>0?'<span>Tot. assenze: <strong style="color:var(--red)">'+assTot+'</strong></span>':'')+
+    '</div>'+assHtml+
+  '</div>';
+
+  el.innerHTML=html;
+  if(btnPdf)btnPdf.style.display='inline-block';
+}
+
+function rpStampaLibroOp(){
+  var o=operai.find(function(x){return x.id===rpLibroOpSel;});if(!o)return;
+  var mesiIt=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  var MOTIV={'malattia':'Malattia','ferie':'Ferie','infortunio':'Infortunio','permesso':'Permesso','altro':'Assente'};
+
+  var giorniSet=new Set();
+  presenze.filter(function(p){return p.operaioId===rpLibroOpSel;}).forEach(function(p){giorniSet.add(p.data);});
+  var giorni=Array.from(giorniSet).sort();
+  var mesiMap={};
+  giorni.forEach(function(d){var m=d.slice(0,7);if(!mesiMap[m])mesiMap[m]=[];mesiMap[m].push(d);});
+
+  var TH='padding:5px 8px;border:1px solid #888;background:#f0ede8;font-size:9px;text-transform:uppercase;font-weight:bold;text-align:left;';
+  var TD='padding:4px 8px;border:1px solid #aaa;font-size:10px;vertical-align:top;';
+  var totGiorni=0,totOre=0;
+  var assenzePdf={malattia:0,ferie:0,infortunio:0,permesso:0,altro:0};
+
+  var html='<h2 style="font-size:14px;margin:0 0 2px">'+o.nome+'</h2>';
+  html+='<p style="font-size:10px;color:#666;margin:0 0 14px">'+o.ruolo+'</p>';
+
+  Object.keys(mesiMap).sort().forEach(function(meseStr){
+    var anno=parseInt(meseStr.slice(0,4)),mese=parseInt(meseStr.slice(5,7));
+    html+='<div style="font-size:11px;font-weight:bold;text-transform:uppercase;color:#C8501A;border-bottom:2px solid #C8501A;padding-bottom:3px;margin:14px 0 6px">'+mesiIt[mese-1]+' '+anno+'</div>';
+    html+='<table style="width:100%;border-collapse:collapse;margin-bottom:4px">';
+    html+='<thead><tr>'+
+      '<th style="'+TH+'width:70px">Giorno</th>'+
+      '<th style="'+TH+'width:80px">Stato</th>'+
+      '<th style="'+TH+'">Cantiere</th>'+
+      '<th style="'+TH+'width:45px;text-align:right">Ore</th>'+
+    '</tr></thead><tbody>';
+
+    var riga=0;
+    mesiMap[meseStr].forEach(function(dateStr){
+      var data=new Date(dateStr+'T00:00:00');
+      var gg=data.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit'});
+      var fest=isFestivo(dateStr);
+      var pres=presenze.find(function(p){return p.operaioId===rpLibroOpSel&&p.data===dateStr&&!p.assente;});
+      var ass=presenze.find(function(p){return p.operaioId===rpLibroOpSel&&p.data===dateStr&&p.assente;});
+
+      var statoTxt='',cantTxt='',oreTxt='',statoCol='';
+      if(pres){
+        var ore=calcOre(pres.entrata,pres.uscita);
+        totGiorni++;totOre+=ore;
+        statoTxt='Presente';statoCol='color:#27ae60;font-weight:bold';
+        cantTxt=nomeCant(pres.cantiereId);oreTxt=ore+'h';
+      } else if(ass){
+        var mKey=ass.motivazione||'altro';
+        if(assenzePdf[mKey]!==undefined)assenzePdf[mKey]++;else assenzePdf.altro++;
+        statoTxt=MOTIV[ass.motivazione]||'Assente';statoCol='color:#c0392b;font-weight:bold';
+        cantTxt='—';oreTxt='';
+      } else if(fest.festivo){
+        statoTxt=fest.label;statoCol='color:#c0392b';cantTxt='';oreTxt='';
+      } else return;
+
+      riga++;
+      var rowBg=riga%2===0?'background:#fafaf8;':'';
+      html+='<tr style="'+rowBg+'">'+
+        '<td style="'+TD+'white-space:nowrap">'+gg+'</td>'+
+        '<td style="'+TD+statoCol+'">'+statoTxt+'</td>'+
+        '<td style="'+TD+'">'+cantTxt+'</td>'+
+        '<td style="'+TD+'text-align:right;font-weight:bold;color:#27ae60">'+oreTxt+'</td>'+
+      '</tr>';
+    });
+    html+='</tbody></table>';
+  });
+
+  var assTotPdf=assenzePdf.malattia+assenzePdf.ferie+assenzePdf.infortunio+assenzePdf.permesso+assenzePdf.altro;
+  var assVociPdf=[];
+  if(assenzePdf.malattia>0)assVociPdf.push('Malattia: '+assenzePdf.malattia);
+  if(assenzePdf.ferie>0)assVociPdf.push('Ferie: '+assenzePdf.ferie);
+  if(assenzePdf.infortunio>0)assVociPdf.push('Infortunio: '+assenzePdf.infortunio);
+  if(assenzePdf.permesso>0)assVociPdf.push('Permesso: '+assenzePdf.permesso);
+  if(assenzePdf.altro>0)assVociPdf.push('Altro: '+assenzePdf.altro);
+  html+='<div style="background:#f5f2ee;padding:8px 12px;font-size:10px;border:1px solid #ccc;margin-top:8px">';
+  html+='Giorni lavorati: <strong>'+totGiorni+'</strong> &nbsp;|&nbsp; Ore totali: <strong>'+totOre+'h</strong>';
+  if(assTotPdf>0)html+='<br>Assenze: <strong style="color:#c0392b">'+assTotPdf+'</strong> ('+assVociPdf.join(', ')+')';
+  html+='</div>';
+
+  var win=window.open('','_blank');
+  win.document.write('<html><head><title>Libro Giornale - '+o.nome+'</title>');
+  win.document.write('<style>body{font-family:Arial,sans-serif;margin:10mm;color:#1C1C1E}');
+  win.document.write('@media print{@page{size:A4;margin:10mm}tr{page-break-inside:avoid}}');
+  win.document.write('</style></head><body>');
+  win.document.write(html);
+  win.document.write('</body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},500);
 }
 
 </script>
