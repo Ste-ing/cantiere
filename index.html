@@ -1029,7 +1029,7 @@ function rpRenderRisultatoCant(){
         var col=colori[i%colori.length];
         var nome=c?c.nome.split(' ')[0]:'';
         return pp.map(function(p){
-          return '<div class="cal-cell-info" style="font-size:9px;color:'+col+'">'+nome+': '+nomeOp(p.operaioId).split(' ')[0]+'</div>';
+          var nomeBreve=nomeOp(p.operaioId).split(' ')[0];var iniziali=nomeOp(p.operaioId).split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,2);return '<div class="cal-cell-info" style="font-size:9px;color:'+col+'"><span class="cal-nome-desktop">'+nomeBreve+'</span><span class="cal-nome-mobile">'+iniziali+'</span></div>';
         }).join('');
       }).filter(Boolean).join('');
     },function(dateStr){
