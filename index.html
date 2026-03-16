@@ -141,10 +141,12 @@ tbody tr:hover td{background:var(--surface2);}
 .stato-filters .btn{font-size:12px;padding:4px 12px;}
 .stato-filters .btn.active-filter{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-border);}
 
+.cal-nome-mobile{display:none;}.cal-nome-desktop{display:inline;}
 @media(max-width:640px){
+  .cal-nome-mobile{display:inline;}.cal-nome-desktop{display:none;}
   .container{padding:.75rem;}.card{padding:1rem;}
   .metric-grid{grid-template-columns:repeat(2,1fr);}.metric-value{font-size:22px;}
-  .cal-cell{min-height:44px;padding:4px;}.cal-cell-info{display:none;}
+  .cal-cell{min-height:44px;padding:4px;}.cal-cell-info{display:block;font-size:8px;line-height:1.2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
   .nav button{padding:11px 12px;font-size:11px;}
   header{padding:0 1rem;}.header-title{font-size:13px;}
   th,td{padding:8px;}
@@ -1152,14 +1154,18 @@ function renderCalendario(){
     if(presenti.length){
       infoHtml+=presenti.map(function(p){
         var col=cantColore(p.cantiereId);
-        var nome=nomeOp(p.operaioId).split(' ')[0];
-        return '<div class="cal-cell-info" style="color:'+col+';font-weight:600;font-size:9px">'+nome+'</div>';
+        var nome=nomeOp(p.operaioId);
+        var nomeBreve=nome.split(' ')[0];
+        var iniziali=nome.split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,2);
+        return '<div class="cal-cell-info" style="color:'+col+';font-weight:600;font-size:9px"><span class="cal-nome-desktop">'+nomeBreve+'</span><span class="cal-nome-mobile">'+iniziali+'</span></div>';
       }).join('');
     }
     if(assenti.length){
       infoHtml+=assenti.map(function(p){
-        var nome=nomeOp(p.operaioId).split(' ')[0];
-        return '<div class="cal-cell-info" style="color:var(--red);font-size:9px;opacity:0.7">'+nome+' · '+(MOTIVAZIONI[p.motivazione]||'Assente')+'</div>';
+        var nome=nomeOp(p.operaioId);
+        var nomeBreve=nome.split(' ')[0];
+        var iniziali=nome.split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,2);
+        return '<div class="cal-cell-info" style="color:var(--red);font-size:9px;opacity:0.7"><span class="cal-nome-desktop">'+nomeBreve+' · Assente</span><span class="cal-nome-mobile">'+iniziali+'</span></div>';
       }).join('');
     }
     html+='<div class="'+cellClass+'" onclick="apriGiornoPanel(\''+dateStr+'\')" style="cursor:pointer"><div class="cal-day-num">'+d+'</div>'+infoHtml+'</div>';
