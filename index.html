@@ -602,6 +602,9 @@ function resetImpostazioni(){
 }
 
 function refreshTutto(){
+  presenze=load('op_presenze',[]);
+  operai=load('op_operai',_defOp);
+  cantieri=load('op_cantieri',_defCant);
   renderPresenzeTable();renderOperai();renderCantieri();renderReport();initAnniSelect();initCalendario();
 }
 
@@ -1093,6 +1096,7 @@ function isFestivo(dateStr){
 }
 
 function renderCalendario(){
+  presenze=load('op_presenze',[]);
   var calOp=document.getElementById('cal-operaio');
   var calLabel=document.getElementById('cal-mese-label');
   var calGrid=document.getElementById('calendario-grid');
