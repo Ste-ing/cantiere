@@ -2403,26 +2403,6 @@ function voceAscoltoIntegrativo(datoMancante){
   rec.start();
 }
 
-function voceLeggiEMostraConferma(testoLettura, opLabel, dataLabel, tipoLabel, orarioEntrata, orarioUscita){
-  var orariLabel=orarioEntrata?(' | '+orarioEntrata+'–'+orarioUscita):'';
-  var conf=document.getElementById('voce-confirm');
-  var confText=document.getElementById('voce-confirm-text');
-  confText.innerHTML=
-    '<b>Data:</b> '+dataLabel+'<br>'+
-    '<b>Operaio:</b> '+opLabel+'<br>'+
-    '<b>Tipo:</b> '+tipoLabel+orariLabel;
-  // Leggi prima, poi mostra conferma
-  if(window.speechSynthesis){
-    window.speechSynthesis.cancel();
-    var msg=new SpeechSynthesisUtterance(testoLettura);
-    msg.lang='it-IT';
-    msg.onend=function(){conf.style.display='block';};
-    window.speechSynthesis.speak(msg);
-  } else {
-    conf.style.display='block';
-  }
-}
-
 function voceConferma(){
   if(!_voceDateStr){return;}
 
