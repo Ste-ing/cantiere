@@ -187,21 +187,23 @@ tbody tr:hover td{background:var(--surface2);}
 
       <!-- Calendario -->
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1.1rem">
-          <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem">
+          <div style="flex:1;display:flex;align-items:center;gap:8px">
             <button class="btn btn-secondary" style="padding:6px 12px" onclick="cambiareMese(-1)">&#8592;</button>
-            <span id="cal-mese-label" style="font-size:17px;font-weight:700;min-width:170px;text-align:center;letter-spacing:0.02em"></span>
+            <span id="cal-mese-label" style="font-size:17px;font-weight:700;flex:1;text-align:center;letter-spacing:0.02em"></span>
             <button class="btn btn-secondary" style="padding:6px 12px" onclick="cambiareMese(1)">&#8594;</button>
           </div>
           <select id="cal-operaio" style="display:none"></select>
-          <div id="qr-data-label" style="font-size:17px;font-weight:700;color:var(--accent);letter-spacing:0.02em;text-align:right"></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center">
+            <div id="qr-data-label" style="font-size:17px;font-weight:700;letter-spacing:0.02em;text-align:center"></div>
+          </div>
         </div>
 
 
-        <div style="position:relative">
-          <div id="calendario-grid"></div>
-          <!-- Bottone microfono -->
-          <button id="btn-voce" onclick="avviaVoce()" style="position:absolute;bottom:8px;right:8px;width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.18);z-index:10">
+        <div id="calendario-grid"></div>
+        <!-- Bottone microfono -->
+        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+          <button id="btn-voce" onclick="avviaVoce()" style="width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.18)">
             <span id="voce-icon">&#127908;</span>
           </button>
         </div>
