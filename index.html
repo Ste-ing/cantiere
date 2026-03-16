@@ -208,18 +208,18 @@ tbody tr:hover td{background:var(--surface2);}
             <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:#FFF5F5;border:1px solid #F0C8C8;display:inline-block"></span>Festivo</span>
             <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--accent)"><span style="width:10px;height:10px;border-radius:2px;background:transparent;border:2px solid var(--accent);display:inline-block"></span>Oggi</span>
           </div>
-          <button id="btn-voce" onclick="avviaVoce()" style="width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.18)">
+          <button id="btn-voce" onclick="avviaVoce()" style="width:56px;height:56px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(200,80,26,0.4);transition:transform 0.15s" onmousedown="this.style.transform='scale(0.93)'" onmouseup="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.93)'" ontouchend="this.style.transform='scale(1)'">
             <span id="voce-icon">&#127908;</span>
           </button>
         </div>
         <div id="cal-legenda-operai" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div>
         <!-- Voce feedback -->
-        <div id="voce-risultato" style="margin-top:6px;font-size:11px;color:var(--text3);min-height:16px;text-align:center"></div>
-        <div id="voce-confirm" style="display:none;margin-top:8px;padding:10px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius-sm)">
-          <div id="voce-confirm-text" style="font-size:12px;color:var(--accent);margin-bottom:8px;font-weight:600"></div>
-          <div style="display:flex;gap:6px">
-            <button onclick="voceConferma()" style="flex:1;padding:6px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer">Conferma</button>
-            <button onclick="voceAnnulla()" style="flex:1;padding:6px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'Syne',sans-serif;font-size:12px;cursor:pointer">Annulla</button>
+        <div id="voce-risultato" style="margin-top:8px;font-size:12px;color:var(--text3);min-height:18px;text-align:center;font-style:italic"></div>
+        <div id="voce-confirm" style="display:none;margin-top:10px;padding:14px;background:var(--accent-bg);border:2px solid var(--accent-border);border-radius:var(--radius)">
+          <div id="voce-confirm-text" style="font-size:13px;color:var(--text);margin-bottom:12px;font-weight:500;line-height:1.6"></div>
+          <div style="display:flex;gap:8px">
+            <button onclick="voceConferma()" style="flex:1;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(200,80,26,0.3)">Conferma</button>
+            <button onclick="voceAnnulla()" style="flex:1;padding:12px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'Syne',sans-serif;font-size:14px;font-weight:600;cursor:pointer">Annulla</button>
           </div>
         </div>
 
@@ -2442,14 +2442,10 @@ function voceConferma(){
   }
 
   // STEP 2: controlla avvertenze, leggi e registra
-  // STEP 3: registra comunque nonostante avvertenze
+  // STEP 3: riprova — annulla e riavvia ascolto
   if(_voceStep===3){
-    var operaiDaReg3=_voceOpId==='tutti'?operai.filter(function(o){return o.stato==='attivo';}):
-      (Array.isArray(_voceOpId)?_voceOpId.map(function(id){return operai.find(function(o){return o.id===id;});}).filter(Boolean):[]);
-    var e3=_voceEntrata||(impostazioni.entrata||'08:00');
-    var u3=_voceUscita||(impostazioni.uscita||'17:00');
-    voceEseguiRegistrazione(operaiDaReg3,e3,u3);
     voceAnnulla();
+    avviaVoce();
     return;
   }
 
@@ -2545,7 +2541,7 @@ function voceConferma(){
       confText.innerHTML=confText.innerHTML+'<br>'+avvHtml;
     }
     var btnConf=conf?conf.querySelector('button:first-child'):null;
-    if(btnConf)btnConf.textContent='Registra comunque';
+    if(btnConf)btnConf.textContent='Riprova comando';
     _voceStep=3;
     return;
   }
