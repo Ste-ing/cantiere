@@ -1862,7 +1862,7 @@ function impRimuoviCategoria(i){
 
 
 // ── RICONOSCIMENTO VOCALE ────────────────────────────────
-var _voceRec=null, _voceOpId=null, _voceCantId=null, _voceDateStr=null;
+var _voceRec=null, _voceOpId=null, _voceCantId=null, _voceDateStr=null, _voceMotiv=null;
 
 var MESI_VOCE={
   'gennaio':1,'febbraio':2,'marzo':3,'aprile':4,'maggio':5,'giugno':6,
@@ -1916,86 +1916,104 @@ function voceReset(){
 function voceParsa(testo){
   var ris=document.getElementById('voce-risultato');
 
+  // --- Motivazioni assenza ---
+  var MOTIV_VOCE={'malattia':'malattia','ferie':'ferie','infortunio':'infortunio','permesso':'permesso','assente':'altro','assenza':'altro'};
+  var motivTrovata=null;
+  Object.keys(MOTIV_VOCE).forEach(function(k){if(testo.includes(k))motivTrovata=MOTIV_VOCE[k];});
+
   // --- Riconosci giorno ---
-  var dataFound=null;
+  var dataFound=oggi;
   var anno=calAnno;
-  // cerca numero giorno + mese (es. "16 marzo", "tre aprile")
   var numeriParole={'uno':1,'due':2,'tre':3,'quattro':4,'cinque':5,'sei':6,'sette':7,'otto':8,
     'nove':9,'dieci':10,'undici':11,'dodici':12,'tredici':13,'quattordici':14,'quindici':15,
     'sedici':16,'diciassette':17,'diciotto':18,'diciannove':19,'venti':20,'ventuno':21,
     'ventidue':22,'ventitre':23,'ventitré':23,'ventiquattro':24,'venticinque':25,
     'ventisei':26,'ventisette':27,'ventotto':28,'ventinove':29,'trenta':30,'trentuno':31};
   var tokens=testo.split(/\s+/);
-  for(var i=0;i<tokens.length;i++){
-    var giorno=parseInt(tokens[i])||numeriParole[tokens[i]];
-    if(giorno>=1&&giorno<=31&&i+1<tokens.length){
-      var mese=MESI_VOCE[tokens[i+1]];
-      if(mese){
-        dataFound=anno+'-'+String(mese).padStart(2,'0')+'-'+String(giorno).padStart(2,'0');
-        break;
+  if(testo.includes('oggi')){
+    dataFound=oggi;
+  } else {
+    for(var i=0;i<tokens.length;i++){
+      var giorno=parseInt(tokens[i])||numeriParole[tokens[i]];
+      if(giorno>=1&&giorno<=31&&i+1<tokens.length){
+        var mese=MESI_VOCE[tokens[i+1]];
+        if(mese){
+          dataFound=anno+'-'+String(mese).padStart(2,'0')+'-'+String(giorno).padStart(2,'0');
+          break;
+        }
       }
     }
   }
 
-  // --- Riconosci operaio ---
-  var opTrovato=null, maxScoreOp=0;
-  operai.forEach(function(o){
-    var parti=o.nome.toLowerCase().split(' ');
-    var score=0;
-    parti.forEach(function(p){if(p.length>2&&testo.includes(p))score++;});
-    if(score>maxScoreOp){maxScoreOp=score;opTrovato=o;}
-  });
+  // --- Riconosci "tutti" ---
+  var tuttiGliOperai=testo.includes('tutti');
 
-  // --- Riconosci cantiere ---
-  var cantTrovato=null, maxScoreCant=0;
-  cantieri.forEach(function(c){
-    var parti=c.nome.toLowerCase().split(' ');
-    var score=0;
-    parti.forEach(function(p){if(p.length>2&&testo.includes(p))score++;});
-    if(score>maxScoreCant){maxScoreCant=score;cantTrovato=c;}
-  });
+  // --- Riconosci operaio (solo se non "tutti") ---
+  var opTrovato=null, maxScoreOp=0;
+  if(!tuttiGliOperai){
+    operai.filter(function(o){return o.stato==='attivo';}).forEach(function(o){
+      var parti=o.nome.toLowerCase().split(' ');
+      var score=0;
+      parti.forEach(function(p){if(p.length>2&&testo.includes(p))score++;});
+      if(score>maxScoreOp){maxScoreOp=score;opTrovato=o;}
+    });
+  }
+
+  // --- Riconosci cantiere (solo se non assenza) ---
+  var cantTrovato=null;
+  if(!motivTrovata){
+    var maxScoreCant=0;
+    cantieri.forEach(function(c){
+      var parti=c.nome.toLowerCase().split(' ');
+      var score=0;
+      parti.forEach(function(p){if(p.length>2&&testo.includes(p))score++;});
+      if(score>maxScoreCant){maxScoreCant=score;cantTrovato=c;}
+    });
+  }
 
   // --- Validazione ---
   var errori=[];
-  if(!dataFound) errori.push('giorno non riconosciuto');
-  if(!opTrovato||maxScoreOp===0) errori.push('operaio non trovato');
-  if(!cantTrovato||maxScoreCant===0) errori.push('cantiere non trovato');
+  if(!tuttiGliOperai&&(!opTrovato||maxScoreOp===0)) errori.push('operaio non trovato');
+  if(!motivTrovata&&(!cantTrovato)) errori.push('cantiere non trovato');
   if(errori.length){
-    ris.textContent+=(' \u2014 '+errori.join(', ')+'. Riprova.');
+    ris.textContent+=(' — '+errori.join(', ')+'. Riprova.');
     return;
   }
 
   _voceDateStr=dataFound;
-  _voceOpId=opTrovato.id;
-  _voceCantId=cantTrovato.id;
+  _voceOpId=tuttiGliOperai?'tutti':opTrovato.id;
+  _voceCantId=cantTrovato?cantTrovato.id:null;
+  _voceMotiv=motivTrovata;
 
   // Mostra riepilogo
   var dataLabel=new Date(dataFound+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+  var opLabel=tuttiGliOperai?'Tutti gli operai attivi':opTrovato.nome;
   var conf=document.getElementById('voce-confirm');
   var confText=document.getElementById('voce-confirm-text');
+  var tipoLabel=motivTrovata?('Assente — '+motivTrovata):('Presente → '+cantTrovato.nome);
   confText.innerHTML=
     '<b>Data:</b> '+dataLabel+'<br>'+
-    '<b>Operaio:</b> '+opTrovato.nome+'<br>'+
-    '<b>Cantiere:</b> '+cantTrovato.nome;
+    '<b>Operaio:</b> '+opLabel+'<br>'+
+    '<b>Tipo:</b> '+tipoLabel;
   conf.style.display='block';
-
-
 }
 
 function voceConferma(){
-  if(!_voceOpId||!_voceCantId||!_voceDateStr){return;}
-  // Leggi conferma ad alta voce (chiamato da tap utente, funziona su iOS)
-  var opNome=nomeOp(_voceOpId);
-  var cantNome=nomeCant(_voceCantId);
+  if(!_voceOpId||!_voceDateStr){return;}
   var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+
+  // Leggi conferma ad alta voce
   if(window.speechSynthesis){
     window.speechSynthesis.cancel();
-    var msg=new SpeechSynthesisUtterance('Presenza registrata. '+opNome+', '+cantNome+', '+dataLabel+'.');
+    var opLabel=_voceOpId==='tutti'?'tutti gli operai':nomeOp(_voceOpId);
+    var tipoLabel=_voceMotiv?('assente per '+_voceMotiv):('presente al cantiere '+nomeCant(_voceCantId));
+    var msg=new SpeechSynthesisUtterance('Registrato. '+opLabel+', '+tipoLabel+', '+dataLabel+'.');
     msg.lang='it-IT';
     msg.rate=1;
     window.speechSynthesis.speak(msg);
   }
-  // Imposta la data nel pannello rapido
+
+  // Imposta data nel pannello rapido
   qrDateStr=_voceDateStr;
   document.querySelectorAll('.cal-cell.selected').forEach(function(el){el.classList.remove('selected');});
   var cells=document.querySelectorAll('#calendario-grid .cal-cell');
@@ -2008,10 +2026,25 @@ function voceConferma(){
   if(dl)dl.textContent=dataLabelFull.charAt(0).toUpperCase()+dataLabelFull.slice(1);
   var dv=document.getElementById('qr-data');
   if(dv)dv.value=_voceDateStr;
-  // Registra presenza
-  qrOpSel=_voceOpId;
-  qrCantSel=_voceCantId;
-  qrRegistra();
+
+  var operaiDaRegistrare=_voceOpId==='tutti'?operai.filter(function(o){return o.stato==='attivo';}):
+    [operai.find(function(o){return o.id===_voceOpId;})].filter(Boolean);
+
+  operaiDaRegistrare.forEach(function(o){
+    var giàReg=presenze.find(function(p){return p.operaioId===o.id&&p.data===_voceDateStr;});
+    if(!giàReg){
+      var ent=impostazioni.entrata||'08:00';
+      var usc=impostazioni.uscita||'17:00';
+      if(_voceMotiv){
+        presenze.push({id:nextPId++,operaioId:o.id,cantiereId:0,data:_voceDateStr,entrata:'',uscita:'',assente:true,motivazione:_voceMotiv});
+      } else {
+        presenze.push({id:nextPId++,operaioId:o.id,cantiereId:_voceCantId,data:_voceDateStr,entrata:ent,uscita:usc,assente:false});
+      }
+    }
+  });
+  persist();refreshTutto();
+  var n=operaiDaRegistrare.length;
+  toast('✓ '+(n>1?n+' presenze registrate!':'Presenza registrata!'));
   voceAnnulla();
 }
 
