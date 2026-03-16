@@ -165,8 +165,7 @@ tbody tr:hover td{background:var(--surface2);}
   </div>
   <div class="header-actions">
     <span id="salva-status"></span>
-    <label class="btn btn-secondary" style="cursor:pointer" title="Importa dati da file Excel">📥 Importa<input type="file" accept=".xlsx,.xls" onchange="importaExcel(event)" style="display:none"></label>
-    <button class="btn btn-secondary" onclick="esportaExcel()">Esporta</button>
+
   </div>
 </header>
 
@@ -201,12 +200,19 @@ tbody tr:hover td{background:var(--surface2);}
 
 
         <div id="calendario-grid"></div>
-        <!-- Bottone microfono -->
-        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <!-- Legenda + Bottone microfono -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-top:10px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:var(--green-bg);border:1px solid var(--green-border);display:inline-block"></span>Presente</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:var(--red-bg);border:1px solid var(--red-border);display:inline-block"></span>Assente</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:#FFF5F5;border:1px solid #F0C8C8;display:inline-block"></span>Festivo</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--accent)"><span style="width:10px;height:10px;border-radius:2px;background:transparent;border:2px solid var(--accent);display:inline-block"></span>Oggi</span>
+          </div>
           <button id="btn-voce" onclick="avviaVoce()" style="width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.18)">
             <span id="voce-icon">&#127908;</span>
           </button>
         </div>
+        <div id="cal-legenda-operai" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div>
         <!-- Voce feedback -->
         <div id="voce-risultato" style="margin-top:6px;font-size:11px;color:var(--text3);min-height:16px;text-align:center"></div>
         <div id="voce-confirm" style="display:none;margin-top:8px;padding:10px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius-sm)">
@@ -216,13 +222,7 @@ tbody tr:hover td{background:var(--surface2);}
             <button onclick="voceAnnulla()" style="flex:1;padding:6px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'Syne',sans-serif;font-size:12px;cursor:pointer">Annulla</button>
           </div>
         </div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:1rem">
-          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:12px;height:12px;border-radius:3px;background:var(--green-bg);border:1px solid var(--green-border);display:inline-block"></span>Presente</span>
-          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:12px;height:12px;border-radius:3px;background:var(--red-bg);border:1px solid var(--red-border);display:inline-block"></span>Assente</span>
-          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:12px;height:12px;border-radius:3px;background:#FFF5F5;border:1px solid #F0C8C8;display:inline-block"></span>Festivo</span>
-          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--accent)"><span style="width:12px;height:12px;border-radius:3px;background:transparent;border:2px solid var(--accent);display:inline-block"></span>Oggi</span>
-        </div>
-        <div id="cal-legenda-operai" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:0.5rem"></div>
+
         <!-- Riepilogo giorno -->
         <div id="giorno-riepilogo" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
@@ -251,7 +251,6 @@ tbody tr:hover td{background:var(--surface2);}
         <!-- Orari -->
         <div class="card" style="padding:0.75rem 1rem">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Modifica orari</div>
-          <div id="qr-orari-op" style="font-size:11px;color:var(--text3);margin-bottom:8px">— Seleziona operaio —</div>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
             <label style="font-size:11px;color:var(--text3);min-width:50px">Entrata</label>
             <input type="time" id="qr-entrata" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:'DM Mono',monospace;background:var(--surface2)">
@@ -450,8 +449,21 @@ tbody tr:hover td{background:var(--surface2);}
   </div>
 
   <div class="section" id="tab-attivita">
-    <!-- Sotto-tab cantieri -->
-    <div id="att-subtabs" style="display:flex;gap:0;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;flex-wrap:wrap"></div>
+    <!-- Sotto-tab cantieri + microfono -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+      <div id="att-subtabs" style="flex:1;display:flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;flex-wrap:wrap"></div>
+      <button id="btn-voce-att" onclick="avviaVoceAtt()" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.18);flex-shrink:0">
+        <span id="voce-att-icon">&#127908;</span>
+      </button>
+    </div>
+    <div id="voce-att-risultato" style="font-size:11px;color:var(--text3);min-height:14px;margin-bottom:6px"></div>
+    <div id="voce-att-confirm" style="display:none;margin-bottom:10px;padding:10px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius-sm)">
+      <div id="voce-att-confirm-text" style="font-size:12px;color:var(--accent);margin-bottom:8px;font-weight:600"></div>
+      <div style="display:flex;gap:6px">
+        <button onclick="voceAttConferma()" style="flex:1;padding:6px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer">Conferma</button>
+        <button onclick="voceAttAnnulla()" style="flex:1;padding:6px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'Syne',sans-serif;font-size:12px;cursor:pointer">Annulla</button>
+      </div>
+    </div>
 
     <!-- Contenuto cantiere selezionato -->
     <div id="att-content">
@@ -521,6 +533,16 @@ tbody tr:hover td{background:var(--surface2);}
 
   <!-- IMPOSTAZIONI -->
   <div class="section" id="tab-impostazioni">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Importa / Esporta</span></div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:1.25rem;line-height:1.6">
+        Esporta tutti i dati in formato Excel o importa un file precedentemente esportato.
+      </p>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="esportaExcel()">📤 Esporta Excel</button>
+        <label class="btn btn-secondary" style="cursor:pointer">📥 Importa Excel<input type="file" accept=".xlsx,.xls" onchange="importaExcel(event)" style="display:none"></label>
+      </div>
+    </div>
     <div class="card">
       <div class="card-header"><span class="card-title">Orari di default</span></div>
       <p style="font-size:13px;color:var(--text2);margin-bottom:1.25rem;line-height:1.6">
@@ -1324,19 +1346,9 @@ function qrInitOrari(){
   var usc=document.getElementById('qr-uscita');
   if(ent)ent.value=impostazioni.entrata||'08:00';
   if(usc)usc.value=impostazioni.uscita||'17:00';
-  var el=document.getElementById('qr-orari-op');
-  if(el)el.textContent='— Registra una presenza prima —';
 }
 
 function qrAggiornaOpLabel(){
-  var el=document.getElementById('qr-orari-op');
-  if(!el)return;
-  if(!qrLastPresId.length){el.textContent='— Registra una presenza prima —';return;}
-  var pres=presenze.find(function(p){return p.id===qrLastPresId[0];});
-  if(!pres){el.textContent='— Registra una presenza prima —';return;}
-  el.textContent=nomeOp(pres.operaioId)+': '+pres.entrata+' – '+pres.uscita;
-  document.getElementById('qr-entrata').value=pres.entrata;
-  document.getElementById('qr-uscita').value=pres.uscita;
 }
 
 function qrSalvaOrari(){
@@ -2304,6 +2316,164 @@ function voceAnnulla(){
   var conf=document.getElementById('voce-confirm');
   if(conf)conf.style.display='none';
   var ris=document.getElementById('voce-risultato');
+  if(ris)ris.textContent='';
+}
+
+// ── COMANDO VOCALE ATTIVITÀ ──────────────────────────────
+var _voceAttRec=null, _voceAttData=null, _voceAttCantId=null, _voceAttCategorie=[], _voceAttNote=null, _voceAttChiuso=false, _voceAttChiusoMotiv=null;
+
+function avviaVoceAtt(){
+  var SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){toast('Riconoscimento vocale non supportato.');return;}
+  var btn=document.getElementById('btn-voce-att');
+  var icon=document.getElementById('voce-att-icon');
+  var ris=document.getElementById('voce-att-risultato');
+  var conf=document.getElementById('voce-att-confirm');
+  conf.style.display='none';
+  _voceAttRec=new SpeechRecognition();
+  _voceAttRec.lang='it-IT';
+  _voceAttRec.continuous=false;
+  _voceAttRec.interimResults=false;
+  _voceAttRec.onstart=function(){
+    btn.style.background='var(--red)';
+    icon.textContent='⏺';
+    ris.textContent="Di' il cantiere, la data e le attività...";
+  };
+  _voceAttRec.onresult=function(e){
+    var testo=e.results[0][0].transcript.toLowerCase().trim();
+    ris.textContent='"'+testo+'"';
+    voceAttParsa(testo);
+  };
+  _voceAttRec.onerror=function(e){ris.textContent='Errore: '+e.error;voceAttReset();};
+  _voceAttRec.onend=function(){voceAttReset();};
+  _voceAttRec.start();
+}
+
+function voceAttReset(){
+  var btn=document.getElementById('btn-voce-att');
+  var icon=document.getElementById('voce-att-icon');
+  if(btn)btn.style.background='var(--accent)';
+  if(icon)icon.textContent='🎤';
+}
+
+function voceAttParsa(testo){
+  var ris=document.getElementById('voce-att-risultato');
+
+  // Numeri in parole per la data
+  var NUM_P={'uno':1,'due':2,'tre':3,'quattro':4,'cinque':5,'sei':6,'sette':7,'otto':8,
+    'nove':9,'dieci':10,'undici':11,'dodici':12,'tredici':13,'quattordici':14,'quindici':15,
+    'sedici':16,'diciassette':17,'diciotto':18,'diciannove':19,'venti':20,'ventuno':21,
+    'ventidue':22,'ventitre':23,'ventitré':23,'ventiquattro':24,'venticinque':25,
+    'ventisei':26,'ventisette':27,'ventotto':28,'ventinove':29,'trenta':30,'trentuno':31};
+  var MESI_V={'gennaio':1,'febbraio':2,'marzo':3,'aprile':4,'maggio':5,'giugno':6,
+    'luglio':7,'agosto':8,'settembre':9,'ottobre':10,'novembre':11,'dicembre':12};
+
+  // Data
+  var dataFound=oggi;
+  if(!testo.includes('oggi')){
+    var tokens=testo.split(/\s+/);
+    for(var i=0;i<tokens.length;i++){
+      var g=parseInt(tokens[i])||NUM_P[tokens[i]];
+      if(g>=1&&g<=31){
+        var m=i+1<tokens.length?MESI_V[tokens[i+1]]:null;
+        if(!m)m=new Date().getMonth()+1;
+        dataFound=calAnno+'-'+String(m).padStart(2,'0')+'-'+String(g).padStart(2,'0');
+        break;
+      }
+    }
+  }
+
+  // Cantiere
+  var cantTrovato=null, maxScore=0;
+  cantieri.forEach(function(c){
+    var score=0;
+    c.nome.toLowerCase().split(' ').forEach(function(p){if(p.length>2&&testo.includes(p))score++;});
+    if(score>maxScore){maxScore=score;cantTrovato=c;}
+  });
+  if(!cantTrovato||maxScore===0){ris.textContent+=' — cantiere non trovato. Riprova.';return;}
+
+  // Chiusura cantiere
+  var MOTIV_C={'maltempo':'maltempo','attesa materiali':'attesa_materiali','attesa':'attesa_materiali',
+    'festivita':'festivita','festività':'festivita','fermo tecnico':'fermo_tecnico','fermo':'fermo_tecnico'};
+  var motivChiusura=null;
+  Object.keys(MOTIV_C).forEach(function(k){if(testo.includes(k))motivChiusura=MOTIV_C[k];});
+  var isChiuso=motivChiusura||testo.includes('chiuso')||testo.includes('chiusa');
+
+  // Categorie
+  var catTrovate=[];
+  (attCategorie||CAT_DEFAULT).forEach(function(cat){
+    if(testo.includes(cat.toLowerCase()))catTrovate.push(cat);
+  });
+
+  // Note (dopo "nota" o "note")
+  var nota='';
+  var notaMatch=testo.match(/not[ae]\s+(.+)$/);
+  if(notaMatch)nota=notaMatch[1].trim();
+
+  if(!isChiuso&&catTrovate.length===0&&!nota){
+    ris.textContent+=' — nessuna attività riconosciuta (categorie, chiusura o nota).';
+    return;
+  }
+
+  _voceAttData=dataFound;
+  _voceAttCantId=cantTrovato.id;
+  _voceAttChiuso=!!isChiuso;
+  _voceAttChiusoMotiv=motivChiusura||'altro';
+  _voceAttCategorie=catTrovate;
+  _voceAttNote=nota;
+
+  var dataLabel=new Date(dataFound+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+  var MOTIV_LABEL={'maltempo':'Maltempo','attesa_materiali':'Attesa materiali','festivita':'Festività','fermo_tecnico':'Fermo tecnico','altro':'Chiuso'};
+  var tipoLabel=isChiuso?('Chiuso — '+(MOTIV_LABEL[_voceAttChiusoMotiv]||'Chiuso')):'';
+  if(catTrovate.length>0)tipoLabel+=(tipoLabel?' | ':'')+catTrovate.join(', ');
+  if(nota)tipoLabel+=(tipoLabel?' | Note: ':'Note: ')+nota;
+
+  var conf=document.getElementById('voce-att-confirm');
+  var confText=document.getElementById('voce-att-confirm-text');
+  confText.innerHTML='<b>Data:</b> '+dataLabel+'<br><b>Cantiere:</b> '+cantTrovato.nome+'<br><b>Tipo:</b> '+tipoLabel;
+  conf.style.display='block';
+}
+
+function voceAttConferma(){
+  if(!_voceAttCantId||!_voceAttData)return;
+
+  if(window.speechSynthesis){
+    window.speechSynthesis.cancel();
+    var cantNome=nomeCant(_voceAttCantId);
+    var dataLabel=new Date(_voceAttData+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+    var msg=new SpeechSynthesisUtterance('Registrato. '+cantNome+', '+dataLabel+'.');
+    msg.lang='it-IT';window.speechSynthesis.speak(msg);
+  }
+
+  var idx=attivitaData.findIndex(function(a){return a.cantiereId===_voceAttCantId&&a.data===_voceAttData;});
+  if(idx>=0){
+    if(_voceAttChiuso){attivitaData[idx].chiuso=true;attivitaData[idx].chiusoMotiv=_voceAttChiusoMotiv;}
+    if(_voceAttCategorie.length>0)attivitaData[idx].categorie=_voceAttCategorie;
+    if(_voceAttNote)attivitaData[idx].note=_voceAttNote;
+  } else {
+    attivitaData.push({
+      id:nextAttId++,cantiereId:_voceAttCantId,data:_voceAttData,
+      categorie:_voceAttCategorie,note:_voceAttNote||'',
+      chiuso:_voceAttChiuso,chiusoMotiv:_voceAttChiusoMotiv
+    });
+    save('op_nattid',nextAttId);
+  }
+  save('op_attivita',attivitaData);
+  cloudSave();
+  // Naviga al cantiere e mese giusto
+  attCantSel=_voceAttCantId;
+  var d=new Date(_voceAttData+'T00:00:00');
+  attAnno=d.getFullYear();attMese=d.getMonth()+1;
+  initAttivita();
+  toast('✓ Attività registrata!');
+  voceAttAnnulla();
+}
+
+function voceAttAnnulla(){
+  _voceAttData=null;_voceAttCantId=null;_voceAttCategorie=[];_voceAttNote=null;_voceAttChiuso=false;_voceAttChiusoMotiv=null;
+  var conf=document.getElementById('voce-att-confirm');
+  if(conf)conf.style.display='none';
+  var ris=document.getElementById('voce-att-risultato');
   if(ris)ris.textContent='';
 }
 
