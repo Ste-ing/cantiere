@@ -2234,10 +2234,11 @@ function voceParsa(testo){
   _voceChiusura=false;
   if(!motivTrovata&&!cantTrovato) {ris.textContent+=(' — cantiere non trovato. Riprova.');return;}
 
-  // --- Validazione ---
+  // --- Validazione: blocca solo se mancano sia operaio che cantiere ---
   var errori=[];
-  if(!tuttiGliOperai&&opTrovati.length===0) errori.push('operaio non trovato');
-  if(!motivTrovata&&(!cantTrovato||maxScoreCant===0)) errori.push('cantiere non trovato');
+  if(!tuttiGliOperai&&opTrovati.length===0&&(!cantTrovato||maxScoreCant===0)){
+    errori.push('operaio e cantiere non trovati');
+  }
   if(errori.length){
     ris.textContent+=(' — '+errori.join(', ')+'. Riprova.');
     return;
