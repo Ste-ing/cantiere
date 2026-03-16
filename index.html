@@ -2062,7 +2062,7 @@ function impRimuoviCategoria(i){
 
 
 // ── RICONOSCIMENTO VOCALE ────────────────────────────────
-var _voceRec=null, _voceOpId=null, _voceCantId=null, _voceDateStr=null, _voceMotiv=null, _voceChiusura=false, _voceChiusuraMotiv=null, _voceEntrata=null, _voceUscita=null;
+var _voceRec=null, _voceOpId=null, _voceCantId=null, _voceDateStr=null, _voceMotiv=null, _voceChiusura=false, _voceChiusuraMotiv=null, _voceEntrata=null, _voceUscita=null, _voceStep=0;
 
 var MESI_VOCE={
   'gennaio':1,'febbraio':2,'marzo':3,'aprile':4,'maggio':5,'giugno':6,
@@ -2253,21 +2253,82 @@ function voceParsa(testo){
   var dataLabel=new Date(dataFound+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
   var opLabel=tuttiGliOperai?'Tutti gli operai attivi':opTrovati.map(function(o){return o.nome;}).join(', ');
 
-  // Controlla dati mancanti e chiedi vocalmente
-  if(!motivTrovata&&!cantTrovato){
-    voceLeggiEChiedi('Ho capito '+opLabel+' il '+dataLabel+'. Quale cantiere?', 'cantiere');
-    return;
-  }
-  if(!motivTrovata&&opTrovati.length===0&&!tuttiGliOperai){
-    voceLeggiEChiedi('Ho capito il '+dataLabel+' al cantiere '+cantTrovato.nome+'. Quale operaio?', 'operaio');
-    return;
-  }
+  // Mostra riepilogo con indicazione dato mancante - step 1
+  var dataMancante=null;
+  if(!motivTrovata&&!cantTrovato&&opTrovati.length>0) dataMancante='cantiere';
+  else if(!motivTrovata&&opTrovati.length===0&&!tuttiGliOperai&&cantTrovato) dataMancante='operaio';
 
-  // Tutti i dati presenti: leggi e mostra conferma
-  var tipoLabel=motivTrovata?('Assente per '+motivTrovata):('Presente al cantiere '+(cantTrovato?cantTrovato.nome:''));
-  var orariLabel=orarioEntrata?(' dalle '+orarioEntrata+' alle '+orarioUscita):'';
-  var testoLettura=opLabel+', '+tipoLabel+', '+dataLabel+orariLabel+'. Confermi?';
-  voceLeggiEMostraConferma(testoLettura, opLabel, dataLabel, tipoLabel, orarioEntrata, orarioUscita);
+  var tipoLabel=motivTrovata?('Assente — '+motivTrovata):('Presente → '+(cantTrovato?cantTrovato.nome:'?'));
+  var orariLabel=orarioEntrata?(' | '+orarioEntrata+'–'+orarioUscita):'';
+  _voceStep=1;
+  var conf=document.getElementById('voce-confirm');
+  var confText=document.getElementById('voce-confirm-text');
+  confText.innerHTML=
+    '<b>Data:</b> '+dataLabel+'<br>'+
+    '<b>Operaio:</b> '+opLabel+'<br>'+
+    '<b>Tipo:</b> '+tipoLabel+orariLabel+
+    (dataMancante?'<br><span style="color:var(--red);font-size:11px">⚠ Manca: '+dataMancante+'</span>':'');
+  var btnConf=conf?conf.querySelector('button'):null;
+  if(btnConf)btnConf.textContent=dataMancante?'Ascolta dato mancante':'Leggi riepilogo';
+  conf.style.display='block';
+}
+
+function voceAscoltoIntegrativo(datoMancante){
+  var SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){toast('Riconoscimento vocale non supportato.');return;}
+  var rec=new SpeechRecognition();
+  rec.lang='it-IT';rec.continuous=false;rec.interimResults=false;
+  var icon=document.getElementById('voce-icon');
+  var ris=document.getElementById('voce-risultato');
+  if(icon)icon.textContent='⏺';
+  if(ris)ris.textContent='In ascolto per '+datoMancante+'...';
+  rec.onresult=function(e){
+    var risposta=e.results[0][0].transcript.toLowerCase().trim();
+    if(ris)ris.textContent='"'+risposta+'"';
+    if(datoMancante==='cantiere'){
+      var cantTrovato2=null,maxScore=0;
+      cantieri.forEach(function(c){
+        var score=0;
+        c.nome.toLowerCase().split(' ').forEach(function(p){if(p.length>2&&risposta.includes(p))score++;});
+        if(score>maxScore){maxScore=score;cantTrovato2=c;}
+      });
+      if(cantTrovato2&&maxScore>0){
+        _voceCantId=cantTrovato2.id;
+      } else {
+        if(ris)ris.textContent='Cantiere non trovato. Ripremi Conferma per riprovare.';
+        if(icon)icon.textContent='🎤';
+        return;
+      }
+    } else if(datoMancante==='operaio'){
+      var opTrovati2=[];
+      operai.filter(function(o){return o.stato==='attivo';}).forEach(function(o){
+        var score=0;
+        o.nome.toLowerCase().split(' ').forEach(function(p){if(p.length>2&&risposta.includes(p))score++;});
+        if(score>0)opTrovati2.push(o);
+      });
+      if(opTrovati2.length>0){
+        _voceOpId=opTrovati2.map(function(o){return o.id;});
+      } else {
+        if(ris)ris.textContent='Operaio non trovato. Ripremi Conferma per riprovare.';
+        if(icon)icon.textContent='🎤';
+        return;
+      }
+    }
+    // Aggiorna riepilogo
+    var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+    var opLabel=_voceOpId==='tutti'?'Tutti gli operai attivi':Array.isArray(_voceOpId)?_voceOpId.map(function(id){return nomeOp(id);}).join(', '):'';
+    var tipoLabel=_voceMotiv?('Assente — '+_voceMotiv):('Presente → '+nomeCant(_voceCantId));
+    var conf=document.getElementById('voce-confirm');
+    var confText=document.getElementById('voce-confirm-text');
+    if(confText)confText.innerHTML='<b>Data:</b> '+dataLabel+'<br><b>Operaio:</b> '+opLabel+'<br><b>Tipo:</b> '+tipoLabel;
+    var btnConf=conf?conf.querySelector('button'):null;
+    if(btnConf)btnConf.textContent='Leggi riepilogo';
+    _voceStep=1;
+    if(icon)icon.textContent='🎤';
+  };
+  rec.onerror=function(){if(icon)icon.textContent='🎤';};
+  rec.onend=function(){if(icon)icon.textContent='🎤';};
+  rec.start();
 }
 
 function voceLeggiEChiedi(testo, datoMancante){
@@ -2365,6 +2426,44 @@ function voceLeggiEMostraConferma(testoLettura, opLabel, dataLabel, tipoLabel, o
 function voceConferma(){
   if(!_voceDateStr){return;}
 
+  // STEP 1: leggi riepilogo o chiedi dato mancante
+  if(_voceStep===1){
+    var dataMancante=null;
+    if(!_voceMotiv&&!_voceCantId&&Array.isArray(_voceOpId)&&_voceOpId.length>0) dataMancante='cantiere';
+    else if(!_voceMotiv&&(!Array.isArray(_voceOpId)||_voceOpId.length===0)&&_voceOpId!=='tutti'&&_voceCantId) dataMancante='operaio';
+
+    if(dataMancante){
+      // Leggi domanda, poi riascolta
+      var domanda=dataMancante==='cantiere'?'Quale cantiere?':'Quale operaio?';
+      var msg=new SpeechSynthesisUtterance(domanda);
+      msg.lang='it-IT';
+      msg.onend=function(){voceAscoltoIntegrativo(dataMancante);};
+      if(window.speechSynthesis){window.speechSynthesis.cancel();window.speechSynthesis.speak(msg);}
+      else{voceAscoltoIntegrativo(dataMancante);}
+    } else {
+      // Leggi riepilogo completo
+      var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+      var opLabel=_voceOpId==='tutti'?'tutti gli operai':Array.isArray(_voceOpId)?_voceOpId.map(function(id){return nomeOp(id);}).join(', '):nomeOp(_voceOpId);
+      var tipoLabel=_voceMotiv?('assente per '+_voceMotiv):('presente al cantiere '+nomeCant(_voceCantId));
+      var orariLabel=_voceEntrata?' dalle '+_voceEntrata+' alle '+_voceUscita:'';
+      var testo=opLabel+', '+tipoLabel+', '+dataLabel+orariLabel+'. Confermi?';
+      var msg2=new SpeechSynthesisUtterance(testo);
+      msg2.lang='it-IT';
+      msg2.onend=function(){
+        _voceStep=2;
+        var conf=document.getElementById('voce-confirm');
+        var btnConf=conf?conf.querySelector('button'):null;
+        if(btnConf)btnConf.textContent='Conferma registrazione';
+      };
+      if(window.speechSynthesis){window.speechSynthesis.cancel();window.speechSynthesis.speak(msg2);}
+      else{_voceStep=2;}
+    }
+    return;
+  }
+
+  // STEP 2: registra
+  if(_voceStep!==2)return;
+
   // --- Chiusura cantiere ---
   if(_voceChiusura){
     var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
@@ -2439,7 +2538,7 @@ function voceConferma(){
 }
 
 function voceAnnulla(){
-  _voceOpId=null;_voceCantId=null;_voceDateStr=null;_voceChiusura=false;_voceChiusuraMotiv=null;_voceEntrata=null;_voceUscita=null;
+  _voceOpId=null;_voceCantId=null;_voceDateStr=null;_voceChiusura=false;_voceChiusuraMotiv=null;_voceEntrata=null;_voceUscita=null;_voceStep=0;
   var conf=document.getElementById('voce-confirm');
   if(conf)conf.style.display='none';
   var ris=document.getElementById('voce-risultato');
