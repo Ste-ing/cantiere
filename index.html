@@ -227,6 +227,21 @@ tbody tr:hover td{background:var(--surface2);}
           <div id="qr-data-label" style="font-size:13px;font-weight:600;color:var(--text2)">— Clicca un giorno —</div>
           <input type="hidden" id="qr-data">
         </div>
+        <!-- Voce -->
+        <div class="card" style="padding:0.75rem 1rem">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Inserimento vocale</div>
+          <button id="btn-voce" onclick="avviaVoce()" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;gap:6px">
+            <span id="voce-icon">&#127908;</span> <span id="voce-label">Parla</span>
+          </button>
+          <div id="voce-risultato" style="margin-top:8px;font-size:11px;color:var(--text3);min-height:16px"></div>
+          <div id="voce-confirm" style="display:none;margin-top:8px;padding:8px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius-sm)">
+            <div id="voce-confirm-text" style="font-size:11px;color:var(--accent);margin-bottom:8px;font-weight:600"></div>
+            <div style="display:flex;gap:6px">
+              <button onclick="voceConferma()" style="flex:1;padding:5px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">Conferma</button>
+              <button onclick="voceAnnulla()" style="flex:1;padding:5px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'Syne',sans-serif;font-size:11px;cursor:pointer">Annulla</button>
+            </div>
+          </div>
+        </div>
         <!-- Operai -->
         <div class="card" style="padding:0.75rem 1rem">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Operaio</div>
@@ -1842,6 +1857,158 @@ function impRimuoviCategoria(i){
   attCategorie.splice(i,1);
   save('op_att_categorie',attCategorie);
   impRenderCategorie();
+}
+
+
+
+// ── RICONOSCIMENTO VOCALE ────────────────────────────────
+var _voceRec=null, _voceOpId=null, _voceCantId=null, _voceDateStr=null;
+
+var MESI_VOCE={
+  'gennaio':1,'febbraio':2,'marzo':3,'aprile':4,'maggio':5,'giugno':6,
+  'luglio':7,'agosto':8,'settembre':9,'ottobre':10,'novembre':11,'dicembre':12
+};
+
+function avviaVoce(){
+  var SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){toast('Riconoscimento vocale non supportato su questo browser.');return;}
+  var btn=document.getElementById('btn-voce');
+  var label=document.getElementById('voce-label');
+  var icon=document.getElementById('voce-icon');
+  var ris=document.getElementById('voce-risultato');
+  var conf=document.getElementById('voce-confirm');
+  conf.style.display='none';
+  ris.textContent='';
+  _voceRec=new SpeechRecognition();
+  _voceRec.lang='it-IT';
+  _voceRec.continuous=false;
+  _voceRec.interimResults=false;
+  _voceRec.onstart=function(){
+    btn.style.background='var(--accent)';
+    btn.style.color='#fff';
+    btn.style.borderColor='var(--accent)';
+    icon.textContent='\u23FA';
+    label.textContent='In ascolto...';
+    ris.textContent="Di' il giorno, l'operaio e il cantiere...";
+  };
+  _voceRec.onresult=function(e){
+    var testo=e.results[0][0].transcript.toLowerCase().trim();
+    ris.textContent='"'+testo+'"';
+    voceParsa(testo);
+  };
+  _voceRec.onerror=function(e){
+    ris.textContent='Errore: '+e.error;
+    voceReset();
+  };
+  _voceRec.onend=function(){voceReset();};
+  _voceRec.start();
+}
+
+function voceReset(){
+  var btn=document.getElementById('btn-voce');
+  var label=document.getElementById('voce-label');
+  var icon=document.getElementById('voce-icon');
+  if(btn){btn.style.background='';btn.style.color='';btn.style.borderColor='';}
+  if(icon)icon.textContent='🎤';
+  if(label)label.textContent='Parla';
+}
+
+function voceParsa(testo){
+  var ris=document.getElementById('voce-risultato');
+
+  // --- Riconosci giorno ---
+  var dataFound=null;
+  var anno=calAnno;
+  // cerca numero giorno + mese (es. "16 marzo", "tre aprile")
+  var numeriParole={'uno':1,'due':2,'tre':3,'quattro':4,'cinque':5,'sei':6,'sette':7,'otto':8,
+    'nove':9,'dieci':10,'undici':11,'dodici':12,'tredici':13,'quattordici':14,'quindici':15,
+    'sedici':16,'diciassette':17,'diciotto':18,'diciannove':19,'venti':20,'ventuno':21,
+    'ventidue':22,'ventitre':23,'ventitré':23,'ventiquattro':24,'venticinque':25,
+    'ventisei':26,'ventisette':27,'ventotto':28,'ventinove':29,'trenta':30,'trentuno':31};
+  var tokens=testo.split(/\s+/);
+  for(var i=0;i<tokens.length;i++){
+    var giorno=parseInt(tokens[i])||numeriParole[tokens[i]];
+    if(giorno>=1&&giorno<=31&&i+1<tokens.length){
+      var mese=MESI_VOCE[tokens[i+1]];
+      if(mese){
+        dataFound=anno+'-'+String(mese).padStart(2,'0')+'-'+String(giorno).padStart(2,'0');
+        break;
+      }
+    }
+  }
+
+  // --- Riconosci operaio ---
+  var opTrovato=null, maxScoreOp=0;
+  operai.forEach(function(o){
+    var parti=o.nome.toLowerCase().split(' ');
+    var score=0;
+    parti.forEach(function(p){if(p.length>2&&testo.includes(p))score++;});
+    if(score>maxScoreOp){maxScoreOp=score;opTrovato=o;}
+  });
+
+  // --- Riconosci cantiere ---
+  var cantTrovato=null, maxScoreCant=0;
+  cantieri.forEach(function(c){
+    var parti=c.nome.toLowerCase().split(' ');
+    var score=0;
+    parti.forEach(function(p){if(p.length>2&&testo.includes(p))score++;});
+    if(score>maxScoreCant){maxScoreCant=score;cantTrovato=c;}
+  });
+
+  // --- Validazione ---
+  var errori=[];
+  if(!dataFound) errori.push('giorno non riconosciuto');
+  if(!opTrovato||maxScoreOp===0) errori.push('operaio non trovato');
+  if(!cantTrovato||maxScoreCant===0) errori.push('cantiere non trovato');
+  if(errori.length){
+    ris.textContent+=(' \u2014 '+errori.join(', ')+'. Riprova.');
+    return;
+  }
+
+  _voceDateStr=dataFound;
+  _voceOpId=opTrovato.id;
+  _voceCantId=cantTrovato.id;
+
+  // Mostra riepilogo
+  var dataLabel=new Date(dataFound+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+  var conf=document.getElementById('voce-confirm');
+  var confText=document.getElementById('voce-confirm-text');
+  confText.innerHTML=
+    '<b>Data:</b> '+dataLabel+'<br>'+
+    '<b>Operaio:</b> '+opTrovato.nome+'<br>'+
+    '<b>Cantiere:</b> '+cantTrovato.nome;
+  conf.style.display='block';
+}
+
+function voceConferma(){
+  if(!_voceOpId||!_voceCantId||!_voceDateStr){return;}
+  // Imposta la data nel pannello rapido
+  qrDateStr=_voceDateStr;
+  // Evidenzia cella nel calendario
+  document.querySelectorAll('.cal-cell.selected').forEach(function(el){el.classList.remove('selected');});
+  var cells=document.querySelectorAll('#calendario-grid .cal-cell');
+  cells.forEach(function(el){
+    if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf(_voceDateStr)>=0)
+      el.classList.add('selected');
+  });
+  var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  var dl=document.getElementById('qr-data-label');
+  if(dl)dl.textContent=dataLabel.charAt(0).toUpperCase()+dataLabel.slice(1);
+  var dv=document.getElementById('qr-data');
+  if(dv)dv.value=_voceDateStr;
+  // Registra presenza
+  qrOpSel=_voceOpId;
+  qrCantSel=_voceCantId;
+  qrRegistra();
+  voceAnnulla();
+}
+
+function voceAnnulla(){
+  _voceOpId=null;_voceCantId=null;_voceDateStr=null;
+  var conf=document.getElementById('voce-confirm');
+  if(conf)conf.style.display='none';
+  var ris=document.getElementById('voce-risultato');
+  if(ris)ris.textContent='';
 }
 
 </script>
