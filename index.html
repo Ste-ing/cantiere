@@ -550,12 +550,62 @@ tbody tr:hover td{background:var(--surface2);}
 </div>
 
 <script>
+// ── GOOGLE APPS SCRIPT SYNC ──────────────────────────────
+var GAS_URL='https://script.google.com/macros/s/AKfycbwnwS3CGZ3kpCmRbZgOVq4LJCbnvHAD3SHJojqcm-hUzTp7m8hUl3Gm1jr-ci9vgTGQiA/exec';
+var _syncTimer=null;
+
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
 function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
-var _defOp=[{id:1,nome:"Mario Rossi",ruolo:"Muratore",tel:"",stato:"attivo"},{id:2,nome:"Giuseppe Bianchi",ruolo:"Carpentiere",tel:"",stato:"attivo"},{id:3,nome:"Luca Verdi",ruolo:"Elettricista",tel:"",stato:"attivo"}];
-var _defCant=[{id:1,nome:"Via Roma 12",indirizzo:"Via Roma 12, Arezzo",resp:""},{id:2,nome:"Residenza Alba",indirizzo:"Via Garibaldi 5, Arezzo",resp:""}];
-var operai=load('op_operai',_defOp),cantieri=load('op_cantieri',_defCant),presenze=load('op_presenze',[]);
-var nextOpId=load('op_noid',4),nextCId=load('op_ncid',3),nextPId=load('op_npid',1);
+
+function cloudLoad(){
+  return new Promise(function(resolve){
+    var script=document.createElement('script');
+    var cbName='_gasCallback_'+Date.now();
+    window[cbName]=function(d){
+      try{
+        if(d.operai)operai=d.operai;
+        if(d.cantieri)cantieri=d.cantieri;
+        if(d.presenze)presenze=d.presenze;
+        if(d.attivita)attivitaData=d.attivita;
+        if(d.attCategorie&&d.attCategorie.length)attCategorie=d.attCategorie;
+        if(d.impostazioni)impostazioni=d.impostazioni;
+        if(d.contatori){nextOpId=d.contatori.noid||nextOpId;nextCId=d.contatori.ncid||nextCId;nextPId=d.contatori.npid||nextPId;nextAttId=d.contatori.nattid||nextAttId;}
+        save('op_operai',operai);save('op_cantieri',cantieri);save('op_presenze',presenze);
+        save('op_noid',nextOpId);save('op_ncid',nextCId);save('op_npid',nextPId);
+        save('op_impostazioni',impostazioni);
+      }catch(e){console.warn('cloudLoad parse error:',e);}
+      delete window[cbName];
+      document.head.removeChild(script);
+      resolve(true);
+    };
+    script.onerror=function(){delete window[cbName];document.head.removeChild(script);resolve(false);};
+    script.src=GAS_URL+'?callback='+cbName;
+    document.head.appendChild(script);
+  });
+}
+
+function cloudSave(){
+  clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(async function(){
+    var st=document.getElementById('salva-status');
+    if(st)st.textContent='⏳ sync...';
+    try{
+      var payload=JSON.stringify({
+        operai:operai,cantieri:cantieri,presenze:presenze,
+        attivita:attivitaData||[],attCategorie:attCategorie||[],
+        impostazioni:impostazioni,
+        contatori:{noid:nextOpId,ncid:nextCId,npid:nextPId,nattid:nextAttId||1}
+      });
+      await fetch(GAS_URL,{method:'POST',mode:'no-cors',body:payload});
+      if(st){st.textContent='✓ salvato';setTimeout(function(){st.textContent='';},2000);}
+    }catch(e){if(st){st.textContent='⚠️ errore sync';setTimeout(function(){st.textContent='';},3000);}}
+  },800);
+}
+
+var _defOp=[];
+var _defCant=[];
+var operai=load('op_operai',[]),cantieri=load('op_cantieri',[]),presenze=load('op_presenze',[]);
+var nextOpId=load('op_noid',1),nextCId=load('op_ncid',1),nextPId=load('op_npid',1);
 var impostazioni=load('op_impostazioni',{entrata:'08:00',uscita:'17:00'});
 function localDateStr(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 var oggi=localDateStr();
@@ -565,8 +615,7 @@ var filtroStatoAttivo='';
 function persist(){
   save('op_operai',operai);save('op_cantieri',cantieri);save('op_presenze',presenze);
   save('op_noid',nextOpId);save('op_ncid',nextCId);save('op_npid',nextPId);
-  var st=document.getElementById('salva-status');
-  if(st){st.textContent='✓ salvato';setTimeout(function(){st.textContent='';},2000);}
+  cloudSave();
 }
 function nomeOp(id){var o=operai.find(function(x){return x.id==id;});return o?o.nome:'—';}
 function nomeCant(id){var c=cantieri.find(function(x){return x.id==id;});return c?c.nome:'—';}
@@ -1467,6 +1516,13 @@ function importaExcel(event){
     if(pu)pu.value=impostazioni.uscita||'17:00';
     populateSelects();initCalendario();initAnniSelect();
     if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+    // Carica dal cloud e aggiorna la UI
+    var st=document.getElementById('salva-status');
+    if(st)st.textContent='⏳ caricamento...';
+    cloudLoad().then(function(ok){
+      if(ok){refreshTutto();populateSelects();initImpostazioni();impRenderCategorie();}
+      if(st)st.textContent='';
+    });
   }catch(e){console.error('INIT ERROR:',e.message,e.stack);}
 })();
 
