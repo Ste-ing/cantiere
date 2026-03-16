@@ -1978,6 +1978,17 @@ function voceParsa(testo){
     '<b>Operaio:</b> '+opTrovato.nome+'<br>'+
     '<b>Cantiere:</b> '+cantTrovato.nome;
   conf.style.display='block';
+
+  // Leggi il riepilogo ad alta voce
+  if(window.speechSynthesis){
+    window.speechSynthesis.cancel();
+    var msg=new SpeechSynthesisUtterance(
+      dataLabel+'. Operaio: '+opTrovato.nome+'. Cantiere: '+cantTrovato.nome+'. Confermi?'
+    );
+    msg.lang='it-IT';
+    msg.rate=1;
+    window.speechSynthesis.speak(msg);
+  }
 }
 
 function voceConferma(){
