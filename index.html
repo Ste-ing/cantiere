@@ -449,13 +449,8 @@ tbody tr:hover td{background:var(--surface2);}
   </div>
 
   <div class="section" id="tab-attivita">
-    <!-- Sotto-tab cantieri + microfono -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
-      <div id="att-subtabs" style="flex:1;display:flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;flex-wrap:wrap"></div>
-      <button id="btn-voce-att" onclick="avviaVoceAtt()" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.18);flex-shrink:0">
-        <span id="voce-att-icon">&#127908;</span>
-      </button>
-    </div>
+    <!-- Sotto-tab cantieri -->
+    <div id="att-subtabs" style="display:flex;gap:0;margin-bottom:0.5rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;flex-wrap:wrap"></div>
     <div id="voce-att-risultato" style="font-size:11px;color:var(--text3);min-height:14px;margin-bottom:6px"></div>
     <div id="voce-att-confirm" style="display:none;margin-bottom:10px;padding:10px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius-sm)">
       <div id="voce-att-confirm-text" style="font-size:12px;color:var(--accent);margin-bottom:8px;font-weight:600"></div>
@@ -465,6 +460,12 @@ tbody tr:hover td{background:var(--surface2);}
       </div>
     </div>
 
+    <!-- Microfono -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:0.75rem">
+      <button id="btn-voce-att" onclick="avviaVoceAtt()" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.18)">
+        <span id="voce-att-icon">&#127908;</span>
+      </button>
+    </div>
     <!-- Contenuto cantiere selezionato -->
     <div id="att-content">
       <div class="empty" style="padding:2rem;text-align:center;color:var(--text3)">Nessun cantiere disponibile</div>
@@ -1011,6 +1012,8 @@ var mesiIt=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Ag
 var mesiBrevi=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
 function initReport(){
+  rpAnnoOp=new Date().getFullYear();rpMeseOp=new Date().getMonth()+1;
+  rpAnnoCant=new Date().getFullYear();rpMeseCant=new Date().getMonth()+1;
   rpAggiornaLabelOp();rpAggiornaLabelCant();
   rpRenderOperai();rpRenderCantieri();
   rpRenderRisultatoOp();rpRenderRisultatoCant();
@@ -1078,7 +1081,7 @@ function rpToggleCant(id){
 
 function rpRenderRisultatoOp(){
   var el=document.getElementById('rp-risultato-op');if(!el)return;
-  if(!rpOpSel.length){el.innerHTML='<div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona uno o più operai</div>';return;}
+  if(!rpOpSel.length){var _ms=rpAnnoOp+'-'+String(rpMeseOp).padStart(2,'0');el.innerHTML=rpCalendario(_ms,function(){return '';},function(){return '';});return;}
   var meseStr=rpAnnoOp+'-'+String(rpMeseOp).padStart(2,'0');
   var colori=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];
 
@@ -1120,7 +1123,7 @@ function rpRenderRisultatoOp(){
 
 function rpRenderRisultatoCant(){
   var el=document.getElementById('rp-risultato-cant');if(!el)return;
-  if(!rpCantSel.length){el.innerHTML='<div class="empty" style="padding:2rem 0;text-align:center;color:var(--text3)">Seleziona uno o più cantieri</div>';return;}
+  if(!rpCantSel.length){var _msc=rpAnnoCant+'-'+String(rpMeseCant).padStart(2,'0');el.innerHTML=rpCalendario(_msc,function(){return '';},function(){return '';});return;}
   var meseStr=rpAnnoCant+'-'+String(rpMeseCant).padStart(2,'0');
   var colori=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];
 
