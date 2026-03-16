@@ -234,7 +234,7 @@ tbody tr:hover td{background:var(--surface2);}
       </div>
 
       <!-- Pannello rapido -->
-      <div style="display:flex;flex-direction:column;gap:0.75rem;position:sticky;top:1rem">
+      <div style="display:flex;flex-direction:column;gap:0.75rem;">
         <!-- Data -->
         <input type="hidden" id="qr-data">
 
@@ -376,7 +376,7 @@ tbody tr:hover td{background:var(--surface2);}
     <!-- Sub-tab Operai -->
     <div id="rp-tab-operai">
       <div style="display:grid;grid-template-columns:180px 1fr;gap:1rem;align-items:start" class="qr-two-col">
-        <div style="display:flex;flex-direction:column;gap:0.75rem;position:sticky;top:1rem">
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
           <div class="card" style="padding:0.75rem 1rem">
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Periodo</div>
             <div style="display:flex;align-items:center;gap:6px">
@@ -399,7 +399,7 @@ tbody tr:hover td{background:var(--surface2);}
     <!-- Sub-tab Cantieri -->
     <div id="rp-tab-cantieri" style="display:none">
       <div style="display:grid;grid-template-columns:180px 1fr;gap:1rem;align-items:start" class="qr-two-col">
-        <div style="display:flex;flex-direction:column;gap:0.75rem;position:sticky;top:1rem">
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
           <div class="card" style="padding:0.75rem 1rem">
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Periodo</div>
             <div style="display:flex;align-items:center;gap:6px">
@@ -422,7 +422,7 @@ tbody tr:hover td{background:var(--surface2);}
     <!-- Sub-tab Attività -->
     <div id="rp-tab-attivita" style="display:none">
       <div style="display:grid;grid-template-columns:180px 1fr;gap:1rem;align-items:start" class="qr-two-col">
-        <div style="display:flex;flex-direction:column;gap:0.75rem;position:sticky;top:1rem">
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
           <div class="card" style="padding:0.75rem 1rem">
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:8px">Periodo</div>
             <div style="display:flex;align-items:center;gap:6px">
@@ -2250,18 +2250,116 @@ function voceParsa(testo){
   _voceEntrata=orarioEntrata;
   _voceUscita=orarioUscita;
 
-  // Mostra riepilogo
   var dataLabel=new Date(dataFound+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
   var opLabel=tuttiGliOperai?'Tutti gli operai attivi':opTrovati.map(function(o){return o.nome;}).join(', ');
+
+  // Controlla dati mancanti e chiedi vocalmente
+  if(!motivTrovata&&!cantTrovato){
+    voceLeggiEChiedi('Ho capito '+opLabel+' il '+dataLabel+'. Quale cantiere?', 'cantiere');
+    return;
+  }
+  if(!motivTrovata&&opTrovati.length===0&&!tuttiGliOperai){
+    voceLeggiEChiedi('Ho capito il '+dataLabel+' al cantiere '+cantTrovato.nome+'. Quale operaio?', 'operaio');
+    return;
+  }
+
+  // Tutti i dati presenti: leggi e mostra conferma
+  var tipoLabel=motivTrovata?('Assente per '+motivTrovata):('Presente al cantiere '+(cantTrovato?cantTrovato.nome:''));
+  var orariLabel=orarioEntrata?(' dalle '+orarioEntrata+' alle '+orarioUscita):'';
+  var testoLettura=opLabel+', '+tipoLabel+', '+dataLabel+orariLabel+'. Confermi?';
+  voceLeggiEMostraConferma(testoLettura, opLabel, dataLabel, tipoLabel, orarioEntrata, orarioUscita);
+}
+
+function voceLeggiEChiedi(testo, datoMancante){
+  var ris=document.getElementById('voce-risultato');
+  if(window.speechSynthesis){
+    window.speechSynthesis.cancel();
+    var msg=new SpeechSynthesisUtterance(testo);
+    msg.lang='it-IT';
+    msg.onend=function(){
+      // Avvia ascolto per il dato mancante
+      voceAscoltoIntegrativo(datoMancante);
+    };
+    window.speechSynthesis.speak(msg);
+  } else {
+    voceAscoltoIntegrativo(datoMancante);
+  }
+  if(ris)ris.textContent=testo;
+}
+
+function voceAscoltoIntegrativo(datoMancante){
+  var SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition)return;
+  var rec=new SpeechRecognition();
+  rec.lang='it-IT';rec.continuous=false;rec.interimResults=false;
+  var icon=document.getElementById('voce-icon');
+  if(icon)icon.textContent='⏺';
+  rec.onresult=function(e){
+    var risposta=e.results[0][0].transcript.toLowerCase().trim();
+    if(icon)icon.textContent='🎤';
+    if(datoMancante==='cantiere'){
+      var cantTrovato2=null,maxScore=0;
+      cantieri.forEach(function(c){
+        var score=0;
+        c.nome.toLowerCase().split(' ').forEach(function(p){if(p.length>2&&risposta.includes(p))score++;});
+        if(score>maxScore){maxScore=score;cantTrovato2=c;}
+      });
+      if(cantTrovato2&&maxScore>0){
+        _voceCantId=cantTrovato2.id;
+        var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+        var opIds=Array.isArray(_voceOpId)?_voceOpId:[];
+        var opLabel=_voceOpId==='tutti'?'Tutti gli operai attivi':opIds.map(function(id){return nomeOp(id);}).join(', ');
+        var tipoLabel='Presente al cantiere '+cantTrovato2.nome;
+        var testoLettura=opLabel+', '+tipoLabel+', '+dataLabel+'. Confermi?';
+        voceLeggiEMostraConferma(testoLettura,opLabel,dataLabel,tipoLabel,_voceEntrata,_voceUscita);
+      } else {
+        var ris=document.getElementById('voce-risultato');
+        if(ris)ris.textContent='Cantiere non trovato. Riprova toccando il microfono.';
+        voceReset();
+      }
+    } else if(datoMancante==='operaio'){
+      var opTrovati2=[];
+      operai.filter(function(o){return o.stato==='attivo';}).forEach(function(o){
+        var score=0;
+        o.nome.toLowerCase().split(' ').forEach(function(p){if(p.length>2&&risposta.includes(p))score++;});
+        if(score>0)opTrovati2.push(o);
+      });
+      if(opTrovati2.length>0){
+        _voceOpId=opTrovati2.map(function(o){return o.id;});
+        var dataLabel2=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+        var opLabel2=opTrovati2.map(function(o){return o.nome;}).join(', ');
+        var tipoLabel2='Presente al cantiere '+nomeCant(_voceCantId);
+        voceLeggiEMostraConferma(opLabel2+', '+tipoLabel2+', '+dataLabel2+'. Confermi?',opLabel2,dataLabel2,tipoLabel2,_voceEntrata,_voceUscita);
+      } else {
+        var ris2=document.getElementById('voce-risultato');
+        if(ris2)ris2.textContent='Operaio non trovato. Riprova toccando il microfono.';
+        voceReset();
+      }
+    }
+  };
+  rec.onerror=function(){voceReset();};
+  rec.onend=function(){if(icon)icon.textContent='🎤';};
+  rec.start();
+}
+
+function voceLeggiEMostraConferma(testoLettura, opLabel, dataLabel, tipoLabel, orarioEntrata, orarioUscita){
+  var orariLabel=orarioEntrata?(' | '+orarioEntrata+'–'+orarioUscita):'';
   var conf=document.getElementById('voce-confirm');
   var confText=document.getElementById('voce-confirm-text');
-  var tipoLabel=motivTrovata?('Assente — '+motivTrovata):('Presente → '+(cantTrovato?cantTrovato.nome:''));
-  var orariLabel=orarioEntrata?(' | '+orarioEntrata+'–'+orarioUscita):'';
   confText.innerHTML=
     '<b>Data:</b> '+dataLabel+'<br>'+
     '<b>Operaio:</b> '+opLabel+'<br>'+
     '<b>Tipo:</b> '+tipoLabel+orariLabel;
-  conf.style.display='block';
+  // Leggi prima, poi mostra conferma
+  if(window.speechSynthesis){
+    window.speechSynthesis.cancel();
+    var msg=new SpeechSynthesisUtterance(testoLettura);
+    msg.lang='it-IT';
+    msg.onend=function(){conf.style.display='block';};
+    window.speechSynthesis.speak(msg);
+  } else {
+    conf.style.display='block';
+  }
 }
 
 function voceConferma(){
@@ -2297,14 +2395,11 @@ function voceConferma(){
   if(!_voceOpId){return;}
   var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
 
-  // Leggi conferma ad alta voce
+  // Conferma registrata
   if(window.speechSynthesis){
     window.speechSynthesis.cancel();
-    var opLabel=_voceOpId==='tutti'?'tutti gli operai':Array.isArray(_voceOpId)?_voceOpId.map(function(id){return nomeOp(id);}).join(', '):nomeOp(_voceOpId);
-    var tipoLabel=_voceMotiv?('assente per '+_voceMotiv):('presente al cantiere '+nomeCant(_voceCantId));
-    var msg=new SpeechSynthesisUtterance('Registrato. '+opLabel+', '+tipoLabel+', '+dataLabel+'.');
+    var msg=new SpeechSynthesisUtterance('Registrato!');
     msg.lang='it-IT';
-    msg.rate=1;
     window.speechSynthesis.speak(msg);
   }
 
