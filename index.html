@@ -1756,7 +1756,7 @@ function raRenderTabella(){
           '<td style="font-size:13px">'+catTesto+'</td>'+
           '<td style="font-size:13px;color:var(--text2)">'+(a.note||'—')+'</td>'+
           '<td style="font-size:12px;color:var(--text2)">'+opNomi+'</td>'+
-          '<td><button class="btn btn-ghost" style="padding:2px 8px;font-size:11px" onclick="raApriModifica('+a.id+')">Modifica</button></td>'+
+          '<td style="display:flex;gap:4px"><button class="btn btn-ghost" style="padding:2px 8px;font-size:11px" onclick="raApriModifica('+a.id+')">Modifica</button><button class="btn btn-danger" style="padding:2px 8px;font-size:11px" onclick="raEliminaAttivita('+a.id+')">Elimina</button></td>'+
         '</tr>'+
         '<tr id="ra-edit-'+a.id+'" style="display:none"><td colspan="5" style="padding:8px 0">'+
           '<div style="display:flex;flex-direction:column;gap:8px;padding:8px;background:var(--surface2);border-radius:var(--radius-sm)">'+
@@ -1771,6 +1771,7 @@ function raRenderTabella(){
             '<div style="display:flex;gap:6px">'+
               '<button class="btn btn-primary" style="font-size:12px;padding:5px 12px" onclick="raSalvaModifica('+a.id+')">✓ Salva</button>'+
               '<button class="btn btn-ghost" style="font-size:12px;padding:5px 12px" onclick="raChiudiModifica('+a.id+')">Annulla</button>'+
+
             '</div>'+
           '</div>'+
         '</td></tr>';
@@ -1798,21 +1799,37 @@ function raRenderCalendario(){
     var isToday=dateStr===oggi;
     var fest=isFestivo(dateStr);
     var haAtt=raCantSel.some(function(id){return(attivitaData||[]).find(function(a){return a.cantiereId===id&&a.data===dateStr;});});
+    var haPres=raCantSel.some(function(id){return presenze.find(function(p){return p.cantiereId===id&&p.data===dateStr&&!p.assente;});});
+    var cellBg=haAtt?'':'';
+    var cellStyle=(!haAtt&&haPres)?'background:#f0f7f0;border-color:#b8ddb8;':'';
     var cellClass='cal-cell'+(fest.festivo?' festivo':'')+(isToday?' today':'')+(haAtt?' present':'');
     var info='';
     if(fest.festivo)info+='<div class="cal-festivo-label">'+fest.label+'</div>';
+    // Mostra numero operai presenti senza attività annotate
+    if(!haAtt&&haPres){
+      var nOp=raCantSel.reduce(function(acc,id){return acc+presenze.filter(function(p){return p.cantiereId===id&&p.data===dateStr&&!p.assente;}).length;},0);
+      info+='<div class="cal-cell-info" style="font-size:9px;color:#4a8a4a;font-weight:600">'+nOp+' op.</div>';
+    }
     raCantSel.forEach(function(cantId,ci){
       var att=(attivitaData||[]).find(function(a){return a.cantiereId===cantId&&a.data===dateStr;});
       if(!att)return;
       var col=colori[ci%colori.length];
-      var c=cantieri.find(function(x){return x.id===cantId;});
-      var nomeCant=c?c.nome.split(' ')[0]:'';
-      if(att.categorie&&att.categorie.length)
-        info+='<div class="cal-cell-info" style="font-size:9px;font-weight:600;color:'+col+'">'+nomeCant+': '+att.categorie[0]+'</div>';
+      var nOpCant=presenze.filter(function(p){return p.cantiereId===cantId&&p.data===dateStr&&!p.assente;}).length;
+      var cats=att.categorie&&att.categorie.length?att.categorie:[];
+      var opLabel=nOpCant>0?nOpCant+' op.':'';
+      // Mostra ogni categoria su una riga + operai sull'ultima
+      if(cats.length>0){
+        cats.forEach(function(cat,ci2){
+          var suffix=ci2===cats.length-1&&opLabel?' · '+opLabel:'';
+          info+='<div class="cal-cell-info" style="font-size:9px;font-weight:600;color:'+col+'">'+cat+suffix+'</div>';
+        });
+      } else if(opLabel){
+        info+='<div class="cal-cell-info" style="font-size:9px;font-weight:600;color:'+col+'">'+opLabel+'</div>';
+      }
     });
     var _rCalColori=['#C8501A','#1D6FB8','#2E6B3E','#7B3F00','#5C3A8C','#A32D2D','#1a7a7a','#8B6914'];var _rLucchetti=cantieri.map(function(c,ci){var _attC=(attivitaData||[]).find(function(a){return a.cantiereId===c.id&&a.data===dateStr&&a.chiuso;});if(!_attC)return '';var _col=_rCalColori[ci%_rCalColori.length];return '<svg width="8" height="9" viewBox="0 0 8 9" fill="'+_col+'" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="4" width="6" height="5" rx="1"/><path d="M2 4V2.5a2 2 0 1 1 4 0V4" stroke="'+_col+'" stroke-width="1.2" fill="none"/></svg>';}).join('');
     var _rDayNum='<div style="display:flex;align-items:center;justify-content:space-between"><span class="cal-day-num" style="margin-bottom:0">'+d+'</span>'+(_rLucchetti?'<span>'+_rLucchetti+'</span>':'')+' </div>';
-    html+='<div class="'+cellClass+'">'+_rDayNum+info+'</div>';
+    html+='<div class="'+cellClass+'" style="'+cellStyle+'">'+_rDayNum+info+'</div>';
   }
   html+='</div>';
   // Legenda
@@ -1826,6 +1843,17 @@ function raRenderCalendario(){
     html+='</div>';
   }
   el.innerHTML=html;
+}
+
+function raEliminaAttivita(id){
+  apriConferma('Eliminare questa attività?',function(){
+    attivitaData=attivitaData.filter(function(a){return a.id!==id;});
+    save('op_attivita',attivitaData);
+    cloudSave();
+    raRenderTabella();
+    raRenderCalendario();
+    toast('Attività eliminata.');
+  });
 }
 
 function raApriModifica(id){
@@ -2099,14 +2127,15 @@ function voceParsa(testo){
   Object.keys(MOTIV_VOCE).forEach(function(k){if(testo.includes(k))motivTrovata=MOTIV_VOCE[k];});
 
   // --- Riconosci giorno ---
-  var dataFound=oggi;
+  var dataFound=qrDateStr||oggi; // usa il giorno selezionato sul calendario o oggi
   var anno=calAnno;
   var numeriParole={'uno':1,'due':2,'tre':3,'quattro':4,'cinque':5,'sei':6,'sette':7,'otto':8,
     'nove':9,'dieci':10,'undici':11,'dodici':12,'tredici':13,'quattordici':14,'quindici':15,
     'sedici':16,'diciassette':17,'diciotto':18,'diciannove':19,'venti':20,'ventuno':21,
     'ventidue':22,'ventitre':23,'ventitré':23,'ventiquattro':24,'venticinque':25,
     'ventisei':26,'ventisette':27,'ventotto':28,'ventinove':29,'trenta':30,'trentuno':31};
-  var tokens=testo.split(/\s+/);
+  var testoClean=testo.replace(/['']/g,' ').replace(/\s+/g,' ').trim();
+  var tokens=testoClean.split(/\s+/);
   if(testo.includes('oggi')){
     dataFound=oggi;
   } else {
@@ -2374,7 +2403,8 @@ function voceAttParsa(testo){
   // Data
   var dataFound=oggi;
   if(!testo.includes('oggi')){
-    var tokens=testo.split(/\s+/);
+    var testoCleanAtt=testo.replace(/['']/g,' ').replace(/\s+/g,' ').trim();
+    var tokens=testoCleanAtt.split(/\s+/);
     for(var i=0;i<tokens.length;i++){
       var g=parseInt(tokens[i])||NUM_P[tokens[i]];
       if(g>=1&&g<=31){
