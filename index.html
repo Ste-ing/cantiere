@@ -2410,9 +2410,19 @@ function voceAttParsa(testo){
   var notaMatch=testo.match(/not[ae]\s+(.+)$/);
   if(notaMatch)nota=notaMatch[1].trim();
 
+  // Se non ci sono categorie né chiusura né nota esplicita, usa tutto il testo residuo come nota
   if(!isChiuso&&catTrovate.length===0&&!nota){
-    ris.textContent+=' — nessuna attività riconosciuta (categorie, chiusura o nota).';
-    return;
+    // Rimuovi nome cantiere, data, mese dal testo per ottenere la nota residua
+    var testoResiduo=testo;
+    cantieri.forEach(function(c){c.nome.toLowerCase().split(' ').forEach(function(p){if(p.length>2)testoResiduo=testoResiduo.replace(p,'');});});
+    Object.keys(MESI_V).forEach(function(m){testoResiduo=testoResiduo.replace(m,'');});
+    testoResiduo=testoResiduo.replace(/\b\d{1,2}\b/g,'').replace(/oggi/g,'').trim().replace(/\s+/g,' ');
+    if(testoResiduo.length>2){
+      nota=testoResiduo;
+    } else {
+      ris.textContent+=' — nessuna attività riconosciuta. Riprova.';
+      return;
+    }
   }
 
   _voceAttData=dataFound;
