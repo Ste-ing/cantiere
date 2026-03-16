@@ -165,6 +165,7 @@ tbody tr:hover td{background:var(--surface2);}
   </div>
   <div class="header-actions">
     <span id="salva-status"></span>
+    <button id="btn-salva-cloud" onclick="salvaSulCloud()" style="padding:5px 12px;border:none;border-radius:4px;background:var(--green-bg);color:var(--green);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--green-border)">Salva</button>
 
   </div>
 </header>
@@ -643,9 +644,11 @@ function cloudLoad(){
         if(d.attCategorie&&d.attCategorie.length)attCategorie=d.attCategorie;
         if(d.impostazioni)impostazioni=d.impostazioni;
         if(d.contatori){nextOpId=d.contatori.noid||nextOpId;nextCId=d.contatori.ncid||nextCId;nextPId=d.contatori.npid||nextPId;nextAttId=d.contatori.nattid||nextAttId;}
+        // Sovrascrivi sempre il localStorage con i dati cloud (evita dati "fantasma")
         save('op_operai',operai);save('op_cantieri',cantieri);save('op_presenze',presenze);
-        save('op_noid',nextOpId);save('op_ncid',nextCId);save('op_npid',nextPId);
+        save('op_attivita',attivitaData);save('op_att_categorie',attCategorie);
         save('op_impostazioni',impostazioni);
+        save('op_noid',nextOpId);save('op_ncid',nextCId);save('op_npid',nextPId);save('op_nattid',nextAttId);
       }catch(e){console.warn('cloudLoad parse error:',e);}
       delete window[cbName];
       document.head.removeChild(script);
@@ -923,15 +926,40 @@ function renderOperai(){
   var lista=filtroStatoAttivo?operai.filter(function(o){return(o.stato||'attivo')===filtroStatoAttivo;}):operai;
   var el=document.getElementById('operai-list');if(!el)return;
   if(!lista.length){el.innerHTML='<div class="empty">'+(filtroStatoAttivo?'Nessun operaio con questo stato.':'Nessun operaio aggiunto.')+'</div>';return;}
-  el.innerHTML='<table><thead><tr><th>Nome</th><th>Ruolo</th><th>Stato</th><th>Telefono</th><th>Giorni</th><th>Ore tot.</th><th></th></tr></thead><tbody>'+
-    lista.map(function(o){
+  // Desktop: tabella | Mobile: cards
+  var isMobile=window.innerWidth<=640;
+  if(isMobile){
+    el.innerHTML=lista.map(function(o){
       var pp=presenze.filter(function(p){return p.operaioId===o.id&&!p.assente;});
       var ore=pp.reduce(function(s,p){return s+calcOre(p.entrata,p.uscita);},0);
-      return '<tr><td><strong>'+o.nome+'</strong></td><td><span class="chip">'+o.ruolo+'</span></td><td>'+statoChip(o.stato||'attivo')+'</td>'+
-        '<td style="color:var(--text3);font-family:\'DM Mono\',monospace;font-size:12px">'+(o.tel||'—')+'</td>'+
-        '<td><strong>'+pp.length+'</strong></td><td><strong>'+ore+'h</strong></td>'+
-        '<td style="display:flex;gap:5px"><button class="btn btn-ghost" onclick="apriModalOperaio('+o.id+')">Modifica</button><button class="btn btn-danger" onclick="eliminaOperaio('+o.id+')">Rimuovi</button></td></tr>';
-    }).join('')+'</tbody></table>';
+      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem 1rem;margin-bottom:0.5rem">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
+          '<strong style="font-size:14px">'+o.nome+'</strong>'+
+          statoChip(o.stato||'attivo')+
+        '</div>'+
+        '<div style="display:flex;gap:12px;font-size:12px;color:var(--text2);margin-bottom:8px">'+
+          '<span>'+o.ruolo+'</span>'+
+          (o.tel?'<span>'+o.tel+'</span>':'')+
+          '<span><strong>'+pp.length+'</strong> giorni</span>'+
+          '<span><strong>'+ore+'</strong>h</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px">'+
+          '<button class="btn btn-ghost" style="flex:1;font-size:12px" onclick="apriModalOperaio('+o.id+')">Modifica</button>'+
+          '<button class="btn btn-danger" style="font-size:12px" onclick="eliminaOperaio('+o.id+')">Rimuovi</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  } else {
+    el.innerHTML='<table><thead><tr><th>Nome</th><th>Ruolo</th><th>Stato</th><th>Telefono</th><th>Giorni</th><th>Ore tot.</th><th></th></tr></thead><tbody>'+
+      lista.map(function(o){
+        var pp=presenze.filter(function(p){return p.operaioId===o.id&&!p.assente;});
+        var ore=pp.reduce(function(s,p){return s+calcOre(p.entrata,p.uscita);},0);
+        return '<tr><td><strong>'+o.nome+'</strong></td><td><span class="chip">'+o.ruolo+'</span></td><td>'+statoChip(o.stato||'attivo')+'</td>'+
+          '<td style="color:var(--text3);font-family:\'DM Mono\',monospace;font-size:12px">'+(o.tel||'—')+'</td>'+
+          '<td><strong>'+pp.length+'</strong></td><td><strong>'+ore+'h</strong></td>'+
+          '<td style="display:flex;gap:5px"><button class="btn btn-ghost" onclick="apriModalOperaio('+o.id+')">Modifica</button><button class="btn btn-danger" onclick="eliminaOperaio('+o.id+')">Rimuovi</button></td></tr>';
+      }).join('')+'</tbody></table>';
+  }
 }
 
 function apriModalOperaio(id){
@@ -977,12 +1005,31 @@ function eliminaCantiere(id){
 function renderCantieri(){
   var el=document.getElementById('cantieri-list');if(!el)return;
   if(!cantieri.length){el.innerHTML='<div class="empty">Nessun cantiere aggiunto.</div>';return;}
-  el.innerHTML='<table><thead><tr><th>Nome</th><th>Indirizzo</th><th>Responsabile</th><th>Giorni att.</th><th></th></tr></thead><tbody>'+
-    cantieri.map(function(c){
+  var isMobile2=window.innerWidth<=640;
+  if(isMobile2){
+    el.innerHTML=cantieri.map(function(c){
       var gg=new Set(presenze.filter(function(p){return p.cantiereId===c.id&&!p.assente;}).map(function(p){return p.data;})).size;
-      return '<tr><td><strong>'+c.nome+'</strong></td><td style="color:var(--text2)">'+c.indirizzo+'</td><td style="color:var(--text2)">'+(c.resp||'—')+'</td><td><strong>'+gg+'</strong></td>'+
-        '<td style="display:flex;gap:5px"><button class="btn btn-ghost" onclick="apriModalCantiere('+c.id+')">Modifica</button><button class="btn btn-danger" onclick="eliminaCantiere('+c.id+')">Rimuovi</button></td></tr>';
-    }).join('')+'</tbody></table>';
+      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem 1rem;margin-bottom:0.5rem">'+
+        '<div style="margin-bottom:4px"><strong style="font-size:14px">'+c.nome+'</strong></div>'+
+        '<div style="font-size:12px;color:var(--text2);margin-bottom:2px">'+c.indirizzo+'</div>'+
+        '<div style="display:flex;gap:12px;font-size:12px;color:var(--text2);margin-bottom:8px">'+
+          (c.resp?'<span>Resp: '+c.resp+'</span>':'')+
+          '<span><strong>'+gg+'</strong> giorni att.</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px">'+
+          '<button class="btn btn-ghost" style="flex:1;font-size:12px" onclick="apriModalCantiere('+c.id+')">Modifica</button>'+
+          '<button class="btn btn-danger" style="font-size:12px" onclick="eliminaCantiere('+c.id+')">Rimuovi</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  } else {
+    el.innerHTML='<table><thead><tr><th>Nome</th><th>Indirizzo</th><th>Responsabile</th><th>Giorni att.</th><th></th></tr></thead><tbody>'+
+      cantieri.map(function(c){
+        var gg=new Set(presenze.filter(function(p){return p.cantiereId===c.id&&!p.assente;}).map(function(p){return p.data;})).size;
+        return '<tr><td><strong>'+c.nome+'</strong></td><td style="color:var(--text2)">'+c.indirizzo+'</td><td style="color:var(--text2)">'+(c.resp||'—')+'</td><td><strong>'+gg+'</strong></td>'+
+          '<td style="display:flex;gap:5px"><button class="btn btn-ghost" onclick="apriModalCantiere('+c.id+')">Modifica</button><button class="btn btn-danger" onclick="eliminaCantiere('+c.id+')">Rimuovi</button></td></tr>';
+      }).join('')+'</tbody></table>';
+  }
 }
 
 function apriModalCantiere(id){
@@ -1623,16 +1670,33 @@ function qrElimina(id){
   });
 }
 
-function esportaExcel(){
+async function esportaExcel(){
+  // Ricarica dal cloud prima di esportare per avere dati aggiornati
+  var st=document.getElementById('salva-status');
+  if(st)st.textContent='⏳ preparazione...';
+  await cloudLoad();
+  if(st)st.textContent='';
   var wb=XLSX.utils.book_new();
-  var presData=presenze.map(function(p){return{ID:p.id,Operaio:nomeOp(p.operaioId),Cantiere:nomeCant(p.cantiereId),Data:p.data,Entrata:p.entrata,Uscita:p.uscita,Ore:p.assente?0:calcOre(p.entrata,p.uscita),Stato:p.assente?'Assente':'Presente',Motivazione:p.assente?(p.motivazione||''):''}});
+  // Presenze
+  var presData=presenze.map(function(p){return{ID:p.id,Operaio:nomeOp(p.operaioId),OperaioID:p.operaioId,Cantiere:nomeCant(p.cantiereId),CantiereID:p.cantiereId,Data:p.data,Entrata:p.entrata,Uscita:p.uscita,Ore:p.assente?0:calcOre(p.entrata,p.uscita),Stato:p.assente?'Assente':'Presente',Motivazione:p.assente?(p.motivazione||''):''}});
+  // Operai
   var opData=operai.map(function(o){return{ID:o.id,Nome:o.nome,Ruolo:o.ruolo,Telefono:o.tel,Stato:o.stato};});
+  // Cantieri
   var cData=cantieri.map(function(c){return{ID:c.id,Nome:c.nome,Indirizzo:c.indirizzo,Responsabile:c.resp};});
+  // Attività
+  var attData=(attivitaData||[]).map(function(a){return{ID:a.id,Cantiere:nomeCant(a.cantiereId),CantiereID:a.cantiereId,Data:a.data,Categorie:(a.categorie||[]).join(', '),Note:a.note||'',Chiuso:a.chiuso?'Si':'No',MotivoChiusura:a.chiusoMotiv||''};});
+  // Categorie attività
+  var catData=(attCategorie||[]).map(function(c){return{Categoria:c};});
+  // Impostazioni
+  var impData=[{EntrataDefault:impostazioni.entrata||'08:00',UscitaDefault:impostazioni.uscita||'17:00'}];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(presData),'Presenze');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(opData),'Operai');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(cData),'Cantieri');
-  XLSX.writeFile(wb,'presenze_cantiere_'+oggi+'.xlsx');
-  toast('Excel esportato!');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(attData),'Attivita');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(catData),'Categorie');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(impData),'Impostazioni');
+  XLSX.writeFile(wb,'cantiere_backup_'+oggi+'.xlsx');
+  toast('Backup completo esportato!');
 }
 
 function importaExcel(event){
@@ -1642,24 +1706,49 @@ function importaExcel(event){
     try{
       var wb=XLSX.read(e.target.result,{type:'binary'});
       var ps=wb.Sheets['Presenze'],os=wb.Sheets['Operai'],cs=wb.Sheets['Cantieri'];
-      if(!ps||!os||!cs){toast('File non valido: mancano fogli.');return;}
+      if(!ps||!os||!cs){toast('File non valido: mancano fogli Presenze, Operai o Cantieri.');return;}
       var rawOp=XLSX.utils.sheet_to_json(os);
       var rawCant=XLSX.utils.sheet_to_json(cs);
       var rawPres=XLSX.utils.sheet_to_json(ps);
       var nuoviOp=rawOp.map(function(r){return{id:parseInt(r.ID)||0,nome:String(r.Nome||''),ruolo:String(r.Ruolo||'—'),tel:String(r.Telefono||''),stato:String(r.Stato||'attivo')};}).filter(function(o){return o.id&&o.nome;});
       var nuoviCant=rawCant.map(function(r){return{id:parseInt(r.ID)||0,nome:String(r.Nome||''),indirizzo:String(r.Indirizzo||'—'),resp:String(r.Responsabile||'')};}).filter(function(c){return c.id&&c.nome;});
       var nuoviPres=rawPres.map(function(r){
-        var opTr=nuoviOp.find(function(o){return o.nome===String(r.Operaio||'');});
-        var caTr=nuoviCant.find(function(c){return c.nome===String(r.Cantiere||'');});
-        return{id:parseInt(r.ID)||0,operaioId:opTr?opTr.id:0,cantiereId:caTr?caTr.id:0,data:String(r.Data||''),entrata:String(r.Entrata||''),uscita:String(r.Uscita||''),assente:String(r.Stato||'')==='Assente'};
-      }).filter(function(p){return p.id&&p.operaioId&&p.cantiereId&&p.data;});
-      apriConferma('Importare '+nuoviOp.length+' operai, '+nuoviCant.length+' cantieri e '+nuoviPres.length+' presenze? I dati attuali verranno sostituiti.',function(){
+        var opId=parseInt(r.OperaioID)||nuoviOp.findIndex(function(o){return o.nome===String(r.Operaio||'');})+1||0;
+        var cId=parseInt(r.CantiereID)||nuoviCant.findIndex(function(c){return c.nome===String(r.Cantiere||'');})+1||0;
+        return{id:parseInt(r.ID)||0,operaioId:opId,cantiereId:cId,data:String(r.Data||''),entrata:String(r.Entrata||''),uscita:String(r.Uscita||''),assente:String(r.Stato||'')==='Assente',motivazione:String(r.Motivazione||'')};
+      }).filter(function(p){return p.id&&p.data;});
+      // Attività
+      var nuoveAtt=[];
+      if(wb.Sheets['Attivita']){
+        nuoveAtt=XLSX.utils.sheet_to_json(wb.Sheets['Attivita']).map(function(r){
+          var cId=parseInt(r.CantiereID)||nuoviCant.findIndex(function(c){return c.nome===String(r.Cantiere||'');})+1||0;
+          return{id:parseInt(r.ID)||0,cantiereId:cId,data:String(r.Data||''),categorie:String(r.Categorie||'').split(',').map(function(s){return s.trim();}).filter(Boolean),note:String(r.Note||''),chiuso:String(r.Chiuso||'')==='Si',chiusoMotiv:String(r.MotivoChiusura||'')};
+        }).filter(function(a){return a.id&&a.data;});
+      }
+      // Categorie
+      var nuoveCat=CAT_DEFAULT;
+      if(wb.Sheets['Categorie']){
+        var rawCat=XLSX.utils.sheet_to_json(wb.Sheets['Categorie']);
+        if(rawCat.length)nuoveCat=rawCat.map(function(r){return String(r.Categoria||'');}).filter(Boolean);
+      }
+      // Impostazioni
+      var nuoveImp=impostazioni;
+      if(wb.Sheets['Impostazioni']){
+        var rawImp=XLSX.utils.sheet_to_json(wb.Sheets['Impostazioni']);
+        if(rawImp.length)nuoveImp={entrata:String(rawImp[0].EntrataDefault||'08:00'),uscita:String(rawImp[0].UscitaDefault||'17:00')};
+      }
+      apriConferma('Importare '+nuoviOp.length+' operai, '+nuoviCant.length+' cantieri, '+nuoviPres.length+' presenze e '+nuoveAtt.length+' attività? I dati attuali verranno sostituiti.',function(){
         operai=nuoviOp;cantieri=nuoviCant;presenze=nuoviPres;
-        nextOpId=nuoviOp.length+1;nextCId=nuoviCant.length+1;nextPId=nuoviPres.length+1;
-        persist();populateSelects();refreshTutto();
-        toast('Importati '+nuoviOp.length+' operai, '+nuoviCant.length+' cantieri, '+nuoviPres.length+' presenze!');
+        attivitaData=nuoveAtt;attCategorie=nuoveCat;impostazioni=nuoveImp;
+        nextOpId=Math.max.apply(null,nuoviOp.map(function(o){return o.id;}).concat([0]))+1;
+        nextCId=Math.max.apply(null,nuoviCant.map(function(c){return c.id;}).concat([0]))+1;
+        nextPId=Math.max.apply(null,nuoviPres.map(function(p){return p.id;}).concat([0]))+1;
+        nextAttId=Math.max.apply(null,nuoveAtt.map(function(a){return a.id;}).concat([0]))+1;
+        save('op_attivita',attivitaData);save('op_att_categorie',attCategorie);save('op_impostazioni',impostazioni);
+        persist();cloudSave();populateSelects();refreshTutto();impRenderCategorie();
+        toast('Importati: '+nuoviOp.length+' operai, '+nuoviCant.length+' cantieri, '+nuoviPres.length+' presenze, '+nuoveAtt.length+' attività!');
       });
-    }catch(err){toast('Errore nel file Excel: '+err.message);}
+    }catch(err){toast('Errore nel file: '+err.message);}
   };
   reader.readAsBinaryString(file);
   event.target.value='';
@@ -2747,6 +2836,34 @@ function voceAttAnnulla(){
   if(conf)conf.style.display='none';
   var ris=document.getElementById('voce-att-risultato');
   if(ris)ris.textContent='';
+}
+
+async function salvaSulCloud(){
+  var btn=document.getElementById('btn-salva-cloud');
+  var st=document.getElementById('salva-status');
+  if(btn){btn.textContent='⏳ Salvataggio...';btn.style.opacity='0.7';btn.disabled=true;}
+  if(st)st.textContent='';
+  try{
+    var payload=JSON.stringify({
+      operai:operai,cantieri:cantieri,presenze:presenze,
+      attivita:attivitaData||[],attCategorie:attCategorie||[],
+      impostazioni:impostazioni,
+      contatori:{noid:nextOpId,ncid:nextCId,npid:nextPId,nattid:nextAttId||1}
+    });
+    await fetch(GAS_URL,{method:'POST',mode:'no-cors',body:payload});
+    // Verifica che il salvataggio sia andato a buon fine ricaricando
+    await new Promise(function(r){setTimeout(r,1500);});
+    var ok=await cloudLoad();
+    if(btn){btn.textContent='✓ Salvato';btn.style.background='var(--green-bg)';btn.style.color='var(--green)';}
+    if(st){st.textContent='✓ Cloud sincronizzato';setTimeout(function(){st.textContent='';},3000);}
+    refreshTutto();
+  }catch(e){
+    if(btn){btn.textContent='⚠ Errore';btn.style.background='var(--red-bg)';btn.style.color='var(--red)';}
+    if(st)st.textContent='Errore salvataggio';
+  }
+  setTimeout(function(){
+    if(btn){btn.textContent='Salva';btn.style.opacity='1';btn.disabled=false;btn.style.background='var(--green-bg)';btn.style.color='var(--green)';}
+  },3000);
 }
 
 </script>
