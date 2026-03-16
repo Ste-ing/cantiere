@@ -1979,32 +1979,33 @@ function voceParsa(testo){
     '<b>Cantiere:</b> '+cantTrovato.nome;
   conf.style.display='block';
 
-  // Leggi il riepilogo ad alta voce
-  if(window.speechSynthesis){
-    window.speechSynthesis.cancel();
-    var msg=new SpeechSynthesisUtterance(
-      dataLabel+'. Operaio: '+opTrovato.nome+'. Cantiere: '+cantTrovato.nome+'. Confermi?'
-    );
-    msg.lang='it-IT';
-    msg.rate=1;
-    window.speechSynthesis.speak(msg);
-  }
+
 }
 
 function voceConferma(){
   if(!_voceOpId||!_voceCantId||!_voceDateStr){return;}
+  // Leggi conferma ad alta voce (chiamato da tap utente, funziona su iOS)
+  var opNome=nomeOp(_voceOpId);
+  var cantNome=nomeCant(_voceCantId);
+  var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+  if(window.speechSynthesis){
+    window.speechSynthesis.cancel();
+    var msg=new SpeechSynthesisUtterance('Presenza registrata. '+opNome+', '+cantNome+', '+dataLabel+'.');
+    msg.lang='it-IT';
+    msg.rate=1;
+    window.speechSynthesis.speak(msg);
+  }
   // Imposta la data nel pannello rapido
   qrDateStr=_voceDateStr;
-  // Evidenzia cella nel calendario
   document.querySelectorAll('.cal-cell.selected').forEach(function(el){el.classList.remove('selected');});
   var cells=document.querySelectorAll('#calendario-grid .cal-cell');
   cells.forEach(function(el){
     if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf(_voceDateStr)>=0)
       el.classList.add('selected');
   });
-  var dataLabel=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  var dataLabelFull=new Date(_voceDateStr+'T00:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   var dl=document.getElementById('qr-data-label');
-  if(dl)dl.textContent=dataLabel.charAt(0).toUpperCase()+dataLabel.slice(1);
+  if(dl)dl.textContent=dataLabelFull.charAt(0).toUpperCase()+dataLabelFull.slice(1);
   var dv=document.getElementById('qr-data');
   if(dv)dv.value=_voceDateStr;
   // Registra presenza
