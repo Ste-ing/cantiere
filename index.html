@@ -2441,7 +2441,18 @@ function voceConferma(){
     return;
   }
 
-  // STEP 2: registra
+  // STEP 2: controlla avvertenze, leggi e registra
+  // STEP 3: registra comunque nonostante avvertenze
+  if(_voceStep===3){
+    var operaiDaReg3=_voceOpId==='tutti'?operai.filter(function(o){return o.stato==='attivo';}):
+      (Array.isArray(_voceOpId)?_voceOpId.map(function(id){return operai.find(function(o){return o.id===id;});}).filter(Boolean):[]);
+    var e3=_voceEntrata||(impostazioni.entrata||'08:00');
+    var u3=_voceUscita||(impostazioni.uscita||'17:00');
+    voceEseguiRegistrazione(operaiDaReg3,e3,u3);
+    voceAnnulla();
+    return;
+  }
+
   if(_voceStep!==2)return;
 
   // --- Chiusura cantiere ---
@@ -2501,6 +2512,49 @@ function voceConferma(){
 
   var _ent=_voceEntrata||(impostazioni.entrata||'08:00');
   var _usc=_voceUscita||(impostazioni.uscita||'17:00');
+
+  // Controlla avvertenze prima di registrare
+  var avvertenze=[];
+  if(!_voceMotiv){
+    var attCantChiuso=(attivitaData||[]).find(function(a){return a.cantiereId===_voceCantId&&a.data===_voceDateStr&&a.chiuso;});
+    if(attCantChiuso){
+      var mLbl={'maltempo':'Maltempo','attesa_materiali':'Attesa materiali','festivita':'Festività','fermo_tecnico':'Fermo tecnico','altro':'Chiuso'};
+      avvertenze.push('Cantiere chiuso: '+(mLbl[attCantChiuso.chiusoMotiv]||'Chiuso'));
+    }
+  }
+  operaiDaRegistrare.forEach(function(o){
+    var giàReg=presenze.find(function(p){return p.operaioId===o.id&&p.data===_voceDateStr;});
+    if(giàReg) avvertenze.push(o.nome+' già registrato');
+    var sov=!_voceMotiv?presenze.filter(function(p){return p.operaioId===o.id&&p.data===_voceDateStr&&!p.assente&&orariSovrapposti(_ent,_usc,p.entrata,p.uscita);}):[];
+    if(sov.length) avvertenze.push(o.nome+': orari sovrapposti');
+  });
+
+  if(avvertenze.length>0){
+    // Leggi avvertenze e mostra bottone annulla
+    var testoAvv=avvertenze.join('. ')+'. Vuoi annullare?';
+    if(window.speechSynthesis){
+      window.speechSynthesis.cancel();
+      var msgAvv=new SpeechSynthesisUtterance(testoAvv);
+      msgAvv.lang='it-IT';
+      window.speechSynthesis.speak(msgAvv);
+    }
+    var conf=document.getElementById('voce-confirm');
+    var confText=document.getElementById('voce-confirm-text');
+    if(confText){
+      var avvHtml=avvertenze.map(function(a){return '<span style="color:var(--red)">⚠ '+a+'</span>';}).join('<br>');
+      confText.innerHTML=confText.innerHTML+'<br>'+avvHtml;
+    }
+    var btnConf=conf?conf.querySelector('button:first-child'):null;
+    if(btnConf)btnConf.textContent='Registra comunque';
+    _voceStep=3;
+    return;
+  }
+
+  voceEseguiRegistrazione(operaiDaRegistrare,_ent,_usc);
+  voceAnnulla();
+}
+
+function voceEseguiRegistrazione(operaiDaRegistrare,_ent,_usc){
   operaiDaRegistrare.forEach(function(o){
     var giàReg=presenze.find(function(p){return p.operaioId===o.id&&p.data===_voceDateStr;});
     if(!giàReg){
@@ -2513,8 +2567,13 @@ function voceConferma(){
   });
   persist();refreshTutto();
   var n=operaiDaRegistrare.length;
+  if(window.speechSynthesis){
+    window.speechSynthesis.cancel();
+    var msg=new SpeechSynthesisUtterance('Registrato!');
+    msg.lang='it-IT';
+    window.speechSynthesis.speak(msg);
+  }
   toast('✓ '+(n>1?n+' presenze registrate!':'Presenza registrata!'));
-  voceAnnulla();
 }
 
 function voceAnnulla(){
